@@ -11,7 +11,8 @@ revealed together. An abandoned game returns to the start after 2 minutes.
 WHAT DATA IT KEEPS
 One row per player:
   event name, date/time, game ID, group size, player number,
-  Play 1 pick and whether it was right, the group's stat guess,
+  Play 1 pick and whether it was right, their friend-stat and
+  counselor-stat guesses and whether each was right,
   Play 2 pick and whether it was right, usefulness answer,
   and whether staff marked the contact as saved.
 It does NOT collect names, emails, student IDs, photos, location, or any
@@ -28,7 +29,7 @@ Connections" (survey of 6,204 U.S. adults, Sept. 3-15, 2024):
 https://www.pewresearch.org/social-trends/2025/01/16/men-women-and-social-connections/
 
 ------------------------------------------------------------
-UPDATING YOUR GITHUB SITE FROM VERSION 1
+UPDATING YOUR GITHUB SITE (from version 1 or an earlier version 2)
   1. Open your takes-a-team repository on GitHub.
   2. Click Add file > Upload files. Drag in index.html, sw.js and
      README.txt from this folder. GitHub replaces the old copies.
