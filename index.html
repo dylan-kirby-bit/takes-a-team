@@ -17,6 +17,7 @@
   --turf:#103a2a; --turf-2:#17483a; --turf-3:#1d5644; --line:rgba(243,241,232,.14);
   --chalk:#f3f1e8; --chalk-dim:#b8c8bd; --gold:#f6bd3a; --gold-ink:#2a1f05;
   --good:#8fdc9a; --miss:#f39a7c;
+  --p1:#f6bd3a; --p2:#8fd3e8; --p3:#d2b4f5;
   --display:"Avenir Next Condensed","Arial Narrow","Roboto Condensed","Helvetica Neue",sans-serif;
   --body:"Avenir Next","Segoe UI","Helvetica Neue",system-ui,sans-serif;
   --hand:"Noteworthy","Marker Felt","Comic Sans MS","Bradley Hand",cursive;
@@ -34,11 +35,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
 .board{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--chalk);padding-bottom:10px}
 .brand{font-family:var(--display);font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:1.05rem}
 .brand b{color:var(--gold)}
-.downs{display:flex;gap:8px;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:.9rem;text-transform:uppercase}
+.downs{display:flex;gap:8px;flex-wrap:wrap;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:.9rem;text-transform:uppercase}
 .downs span{padding:4px 10px;border:1.5px solid var(--chalk-dim);color:var(--chalk-dim);border-radius:3px}
 .downs span.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
 .downs span.done{color:var(--chalk);border-color:var(--chalk)}
 main{flex:1;display:flex;flex-direction:column;gap:22px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:22px}
 h1,h2{font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:.95;margin:0;text-wrap:balance}
 h1{font-size:clamp(3rem,9vw,6.2rem)}
 h2{font-size:clamp(2rem,5vw,3.1rem)}
@@ -46,9 +48,10 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .hand{font-family:var(--hand);color:var(--chalk-dim)}
 .scenario{font-size:clamp(1.25rem,2.6vw,1.6rem);max-width:46ch;margin:0;line-height:1.35}
 .scenario q{font-family:var(--hand);color:var(--chalk)}
+.small{font-size:.9rem;color:var(--chalk-dim);margin:0}
 .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 @media (max-width:760px){.cards{grid-template-columns:1fr}}
-.play{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;padding:18px;border:2px solid var(--chalk);border-radius:6px;background:var(--turf-2);min-height:220px;transition:transform .15s,background .15s}
+.play{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;padding:18px;border:2px solid var(--chalk);border-radius:6px;background:var(--turf-2);min-height:220px;transition:transform .15s,background .15s;position:relative}
 .play:active{transform:scale(.98);background:var(--turf-3)}
 .play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .play .tag{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:.1em;color:var(--gold)}
@@ -58,36 +61,82 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .play.right{border-color:var(--good);background:var(--turf-3)} .play.right .tag{color:var(--good)}
 .play.wrong{border-color:var(--miss);opacity:.75}
 .play[disabled]{cursor:default}
+.pickers{display:flex;gap:6px;flex-wrap:wrap}
+.pickers i{font-style:normal;font-family:var(--display);font-weight:800;font-size:.85rem;letter-spacing:.06em;padding:3px 8px;border-radius:3px;color:var(--turf);background:var(--pc)}
 .btn{appearance:none;-webkit-appearance:none;border:0;cursor:pointer;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:1.35rem;padding:16px 30px;border-radius:4px;background:var(--gold);color:var(--gold-ink);text-align:center}
 .btn:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
 .btn.ghost{background:transparent;color:var(--chalk);border:2px solid var(--chalk)}
 .btn.warn{background:transparent;color:var(--miss);border:2px solid var(--miss)}
 .btn.small{font-size:1rem;padding:10px 18px}
+.btn[disabled]{opacity:.4;cursor:default}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .start{flex:1;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:center}
 @media (max-width:760px){.start{grid-template-columns:1fr}}
 .start h1 em{font-style:normal;color:var(--gold)}
 .start svg{width:100%;max-height:340px;color:var(--chalk)}
+.count{display:flex;gap:12px;flex-wrap:wrap}
+.count .btn{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:150px}
+.count .btn small{font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:600;font-size:.85rem;opacity:.85}
+/* turn banner for group play */
+.turn{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:2px solid var(--pc);border-radius:6px;padding:12px 16px;background:var(--turf-2)}
+.turn b{font-family:var(--display);font-size:1.5rem;text-transform:uppercase;color:var(--pc);letter-spacing:.04em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:.9rem;padding:5px 10px;border-radius:3px;border:1.5px solid var(--pc);color:var(--pc)}
+.chip.done{background:var(--pc);color:var(--turf)}
+.pass{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:20px}
+.pass .big{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.95;color:var(--pc)}
+/* stat */
+.guess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:720px}
+.guess button{appearance:none;-webkit-appearance:none;font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,7vw,4rem);color:var(--chalk);background:var(--turf-2);border:2px solid var(--chalk);border-radius:6px;padding:22px 0;cursor:pointer}
+.guess button:active{background:var(--turf-3)}
+.guess button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.statwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
+@media (max-width:760px){.statwrap{grid-template-columns:1fr}}
+.bignum{font-family:var(--display);font-weight:800;font-size:clamp(5rem,14vw,8.5rem);line-height:.85;color:var(--gold)}
+.sbars{display:flex;flex-direction:column;gap:18px}
+.sgroup h3{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:1.2rem;margin:0 0 8px}
+.sbar{display:grid;grid-template-columns:72px minmax(0,1fr) 52px;gap:10px;align-items:center;font-size:1rem}
+.sbar+.sbar{margin-top:6px}
+.strack{height:24px;background:var(--turf-2);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.sfill{height:100%;background:var(--chalk-dim)} .sfill.men{background:var(--gold)}
+.sbar .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.callout{font-size:clamp(1.2rem,2.4vw,1.5rem);font-weight:700;margin:0;max-width:40ch}
 .huddle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;counter-reset:h}
 @media (max-width:760px){.huddle{grid-template-columns:1fr}}
 .huddle div{border-top:3px solid var(--gold);padding-top:12px;display:flex;flex-direction:column;gap:6px}
 .huddle b{font-family:var(--display);font-weight:800;font-size:1.6rem;text-transform:uppercase;line-height:1}
 .huddle b::before{counter-increment:h;content:counter(h) ". ";color:var(--gold)}
-.feedback{font-size:1.25rem;max-width:52ch}
+.feedback{font-size:1.25rem;max-width:56ch;display:flex;flex-direction:column;gap:8px}
 .feedback strong{font-family:var(--display);font-size:2rem;text-transform:uppercase;display:block;line-height:1}
 .feedback.good strong{color:var(--good)} .feedback.miss strong{color:var(--miss)}
+.results{display:flex;gap:8px;flex-wrap:wrap}
+/* usefulness */
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px}
+@media (max-width:760px){.opts{grid-template-columns:1fr}}
+.opt{appearance:none;-webkit-appearance:none;font:inherit;font-size:1.2rem;font-weight:600;color:var(--chalk);text-align:left;cursor:pointer;background:var(--turf-2);border:2px solid var(--chalk);border-radius:6px;padding:18px 20px;line-height:1.3}
+.opt:active{background:var(--turf-3)}
+.opt:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+/* final */
 .final{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center}
 @media (max-width:760px){.final{grid-template-columns:1fr}}
 .qr{width:min(300px,70vw);aspect-ratio:1;max-width:100%;background:#fff;border-radius:6px;display:grid;place-items:center;padding:14px}
 .qr img{width:100%;height:100%;object-fit:contain}
 .qr.empty{background:transparent;border:2.5px dashed var(--chalk-dim);color:var(--chalk-dim);text-align:center;font-family:var(--hand);font-size:1.3rem}
+.roster{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.roster li{display:flex;align-items:center;gap:12px;font-size:1.2rem;font-weight:600}
+.roster li::before{content:"";width:14px;height:14px;border:2.5px solid var(--gold);border-radius:50%;flex:none}
 .crisis{font-size:1.05rem;color:var(--chalk-dim);margin:0} .crisis b{color:var(--chalk)}
-.staffbar{border-top:1.5px dashed var(--chalk-dim);padding-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.staffbar{border-top:1.5px dashed var(--chalk-dim);padding-top:14px;display:flex;flex-direction:column;gap:12px}
 .staffbar .lbl{font-family:var(--display);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim);font-size:.95rem}
+.savedrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.savedrow .who{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pc);min-width:96px}
+.tog{appearance:none;-webkit-appearance:none;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:.95rem;padding:9px 14px;border-radius:4px;border:2px solid var(--chalk-dim);background:transparent;color:var(--chalk-dim);cursor:pointer}
+.tog.on{background:var(--chalk);color:var(--turf);border-color:var(--chalk)}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--chalk-dim);font-size:.85rem}
 .hold{appearance:none;-webkit-appearance:none;background:transparent;color:var(--chalk-dim);cursor:pointer;font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:10px 14px;border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden;-webkit-touch-callout:none}
 .hold i{position:absolute;inset:0;background:var(--gold);opacity:.35;transform:scaleX(0);transform-origin:left}
 .hold.pressing i{transition:transform 1s linear;transform:scaleX(1)}
+/* staff */
 .panel{display:flex;flex-direction:column;gap:26px}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 @media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -96,8 +145,8 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .stat .l{font-size:.9rem;color:var(--chalk-dim)}
 .stat.gold{border-color:var(--gold)} .stat.gold .n{color:var(--gold)}
 .bars{display:flex;flex-direction:column;gap:10px}
-.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 56px;gap:12px;align-items:center;font-size:.95rem}
-@media (max-width:520px){.bar{grid-template-columns:96px minmax(0,1fr) 48px}}
+.bar{display:grid;grid-template-columns:230px minmax(0,1fr) 64px;gap:12px;align-items:center;font-size:.95rem}
+@media (max-width:620px){.bar{grid-template-columns:120px minmax(0,1fr) 52px}}
 .track{height:22px;background:var(--turf-2);border:1px solid var(--line);border-radius:2px;overflow:hidden}
 .fill{height:100%;background:var(--chalk-dim)} .fill.post{background:var(--gold)} .fill.saved{background:var(--good)}
 .bar .v{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
@@ -136,8 +185,9 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 (() => {
 "use strict";
 /* All results stay in this browser's storage on this device. The page sends nothing anywhere. */
-const KEY_PLAYS = "takesATeam.plays.v1", KEY_CFG = "takesATeam.config.v1";
+const KEY_PLAYS = "takesATeam.plays.v2", KEY_CFG = "takesATeam.config.v1";
 const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor University Counseling Center", qr: "", lastExport: "" };
+const IDLE_MS = 120000;   // an abandoned game returns to the start screen after 2 minutes
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeKey(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -145,37 +195,49 @@ const storageOK = (() => { try { localStorage.setItem("takesATeam.test", "1"); l
 
 let cfg = { ...DEFAULTS, ...readKey(KEY_CFG, {}) };
 let plays = readKey(KEY_PLAYS, []);
-let game = null, screen = "start", homeTimer = null, confirm = "";
+let game = null, screen = "start", homeTimer = null, idleTimer = null, confirm = "";
 
 function savePlays(){ if (!writeKey(KEY_PLAYS, plays)) toast("This play couldn't be saved on the iPad. Export results now."); }
 function saveCfg(){ if (!writeKey(KEY_CFG, cfg)) toast("Setup couldn't be saved. The QR image may be too large."); }
 
+/* ---------- content ---------- */
 const ROUND1 = {
-  scenario: "Your roommate's been skipping practice, snapping at everybody, and when you ask, he says he's <q>fine.</q>",
+  scenario: "Your roommate's been skipping class and the gym, snapping at everybody, and when you ask, they say they're <q>fine.</q>",
   correct: "checkin",
   options: [
-    { id: "space",   title: "Give him space", sub: "He'll come to you when he's ready.", d: "space" },
-    { id: "checkin", title: "Check in directly", sub: "Ask him for real: “Hey, are you actually okay?”", d: "in" },
+    { id: "space",   title: "Give them space", sub: "They'll come to you when they're ready.", d: "space" },
+    { id: "checkin", title: "Check in directly", sub: "Ask for real: “Hey, are you actually okay?”", d: "in" },
     { id: "joke",    title: "Crack a joke", sub: "Lighten the mood and move on.", d: "around" }
   ]
 };
 const ROUND2 = {
-  scenario: "Your buddy says, <q>I've been in a weird place lately, but I don't want to make it a thing.</q>",
+  scenario: "Your friend says, <q>I've been in a weird place lately, but I don't want to make it a thing.</q>",
   correct: "lean",
   options: [
-    { id: "change", title: "Change the subject", sub: "Keep it light so he's comfortable.", d: "away" },
+    { id: "change", title: "Change the subject", sub: "Keep it light so they're comfortable.", d: "away" },
     { id: "lean",   title: "Lean in and go together", sub: "“Thanks for telling me. Want to grab food and talk? I'll walk over to the Counseling Center with you.”", d: "pass" },
-    { id: "shrug",  title: "Tell him it's normal", sub: "“Everybody gets stressed. You'll be fine.”", d: "space" }
+    { id: "shrug",  title: "Tell them it's normal", sub: "“Everybody gets stressed. You'll be fine.”", d: "space" }
   ]
 };
+const STAT = { answer: 38, choices: [18, 38, 58] };
+const USEFUL = [
+  { id: "learned_will_use",  text: "I learned something new, and I'll use it." },
+  { id: "learned_wont_use",  text: "I learned something new, but I probably won't use it." },
+  { id: "good_reminder",     text: "I didn't learn anything new, but it was a good reminder." },
+  { id: "nothing_new",       text: "I didn't learn anything new, and I won't use it." }
+];
+const ROSTER = ["Baylor Counseling Center Office", "Suicide Prevention Hotline (988)", "Heart of Texas Behavioral Network", "Baylor Police"];
+const PCOLORS = ["var(--p1)", "var(--p2)", "var(--p3)"];
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 2800); }
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 2600); }
 function fmtDate(iso){ try { return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) { return iso; } }
+const group = () => game && game.size > 1;
+const pname = i => `Player ${i + 1}`;
 
 function diagram(kind){
   const O = (x,y)=>`<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/>`;
@@ -192,35 +254,75 @@ function diagram(kind){
   return `<svg viewBox="0 0 250 80" aria-hidden="true">${defs}${parts[kind]}</svg>`;
 }
 
+/* ---------- navigation ---------- */
 function downs(){
-  const steps = ["Play 1", "Play 2", "Final play"];
-  const order = { r1:0, huddle:0.5, r2:1, r2fb:1.5, final:2, thanks:3 };
+  const steps = ["Play 1", "Huddle", "Play 2", "Wrap-up"];
+  const order = { r1:0, pass1:0, stat:1, statReveal:1, huddle:1, r2:2, pass2:2, r2fb:2, useful:3, final:3, thanks:4 };
   const at = order[screen];
   $("#downs").innerHTML = at === undefined ? "" : steps.map((s, i) =>
-    `<span class="${(at >= i && at < i + 1) ? "on" : at > i ? "done" : ""}">${s}</span>`).join("");
+    `<span class="${at === i ? "on" : at > i ? "done" : ""}">${s}</span>`).join("");
 }
-function go(s){ screen = s; clearTimeout(homeTimer); render(); downs(); window.scrollTo(0, 0); }
+function go(s){ screen = s; clearTimeout(homeTimer); render(); downs(); window.scrollTo(0, 0); bumpIdle(); }
+function bumpIdle(){
+  clearTimeout(idleTimer);
+  if (["start", "staff", "thanks"].includes(screen)) return;
+  idleTimer = setTimeout(() => { game = null; go("start"); }, IDLE_MS);
+}
+document.addEventListener("pointerdown", bumpIdle, { passive: true });
 
-function cardsHTML(round, pick){
+function newGame(size){
+  game = { id: newId(), size, turn: 0, guess: null, rowIds: [],
+    players: Array.from({ length: size }, () => ({ pre: null, post: null, useful: null, saved: null })),
+    order: { r1: shuffle(ROUND1.options), r2: shuffle(ROUND2.options) } };
+}
+
+function turnBanner(field, verb){
+  if (!group()) return "";
+  const i = game.turn;
+  return `<div class="turn" style="--pc:${PCOLORS[i]}"><b>${pname(i)}, ${verb}</b>
+    <div class="chips">${game.players.map((p, j) =>
+      `<span class="chip ${p[field] ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)}${p[field] ? " ✓" : ""}</span>`).join("")}</div></div>`;
+}
+
+function cardsHTML(round, reveal){
   const R = round === "r1" ? ROUND1 : ROUND2;
+  const field = round === "r1" ? "pre" : "post";
   return `<div class="cards">${game.order[round].map((o, i) => {
-    let cls = "";
-    if (pick) cls = o.id === R.correct ? "right" : (o.id === pick ? "wrong" : "");
-    return `<button class="play ${cls}" data-pick="${o.id}" ${pick ? "disabled" : ""}>
+    let cls = "", pickers = "";
+    if (reveal) {
+      const who = game.players.map((p, j) => p[field] === o.id ? j : -1).filter(j => j >= 0);
+      cls = o.id === R.correct ? "right" : (who.length ? "wrong" : "");
+      if (group() && who.length) pickers = `<span class="pickers">${who.map(j => `<i style="--pc:${PCOLORS[j]}">${pname(j)}</i>`).join("")}</span>`;
+    }
+    return `<button class="play ${cls}" data-pick="${o.id}" ${reveal ? "disabled" : ""}>
       <span class="tag">${"ABC"[i]} · Play call</span>${diagram(o.d)}
-      <strong>${esc(o.title)}</strong><small>${esc(o.sub)}</small></button>`;
+      <strong>${esc(o.title)}</strong><small>${esc(o.sub)}</small>${pickers}</button>`;
   }).join("")}</div>`;
 }
 
+/* Record a pick for the current player, then hand off or move on. */
+function pick(field, value, passScreen, nextScreen, after){
+  game.players[game.turn][field] = value;
+  if (group() && game.turn < game.size - 1) { game.turn++; go(passScreen); return; }
+  game.turn = 0;
+  if (after) after();
+  go(nextScreen);
+}
+
+/* ---------- screens ---------- */
 function render(){
   const el = $("#screen");
   if (screen === "start") {
     el.innerHTML = `<section class="start fade">
-      <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="stack" style="gap:20px">
         <span class="eyebrow">${esc(cfg.event)}</span>
         <h1>Want to make <em>the team?</em></h1>
-        <p class="scenario">Two quick plays and you get a prize.</p>
-        <div class="row"><button class="btn" id="play">Tap to play</button></div>
+        <p class="scenario">A few quick plays and you get a prize. Play solo or with up to two friends.</p>
+        <div class="count">
+          <button class="btn" data-size="1">Play solo<small>1 player</small></button>
+          <button class="btn ghost" data-size="2">With a friend<small>2 players</small></button>
+          <button class="btn ghost" data-size="3">With two friends<small>3 players</small></button>
+        </div>
       </div>
       <svg viewBox="0 0 300 260" aria-hidden="true">
         <g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
@@ -233,67 +335,138 @@ function render(){
     </section>
     <div class="foot"><span>Baylor University Counseling Center outreach</span>
       <button class="hold" id="staffBtn" aria-label="Staff results, press and hold to open"><i></i>Staff · hold</button></div>`;
-    $("#play").onclick = () => {
-      game = { id: null, pre: null, post: null, order: { r1: shuffle(ROUND1.options), r2: shuffle(ROUND2.options) } };
-      go("r1");
-    };
+    el.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { newGame(+b.dataset.size); go("r1"); });
     wireHold($("#staffBtn"));
   }
   else if (screen === "r1") {
-    el.innerHTML = `<section class="fade" style="display:flex;flex-direction:column;gap:22px">
+    el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Play 1</span>
+      ${turnBanner("pre", "pick your play")}
       <p class="scenario">${ROUND1.scenario}</p>
-      <h2>What's your play?</h2>${cardsHTML("r1")}</section>`;
-    el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { game.pre = b.dataset.pick; go("huddle"); });
+      <h2>What's your play?</h2>${cardsHTML("r1", false)}
+      ${group() ? `<p class="small">Everyone else, no peeking. Picks stay secret until the end.</p>` : ""}</section>`;
+    el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick("pre", b.dataset.pick, "pass1", "stat"));
+  }
+  else if (screen === "pass1" || screen === "pass2") {
+    const i = game.turn;
+    el.innerHTML = `<section class="pass fade" style="--pc:${PCOLORS[i]}">
+      <span class="eyebrow">Locked in ✓</span>
+      <div class="big">${pname(i)}, you're up.</div>
+      <p class="scenario">Hand off the iPad. Everyone else, look away.</p>
+      <button class="btn" id="ready" style="background:${PCOLORS[i]}">I'm ready</button></section>`;
+    $("#ready").onclick = () => go(screen === "pass1" ? "r1" : "r2");
+  }
+  else if (screen === "stat") {
+    el.innerHTML = `<section class="stack fade">
+      <span class="eyebrow">Huddle · Guess the stat</span>
+      <h2>Everyone needs support. Have you built your whole team?</h2>
+      <p class="scenario">What percent of men say they'd be very likely to turn to a friend for emotional support?</p>
+      ${group() ? `<p class="small">Talk it over and make one guess together.</p>` : ""}
+      <div class="guess">${STAT.choices.map(c => `<button data-g="${c}">${c}%</button>`).join("")}</div></section>`;
+    el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { game.guess = +b.dataset.g; go("statReveal"); });
+  }
+  else if (screen === "statReveal") {
+    const right = game.guess === STAT.answer;
+    const sb = (label, v, men) => `<div class="sbar"><span>${label}</span><div class="strack"><div class="sfill ${men ? "men" : ""}" style="width:${v}%"></div></div><span class="v">${v}%</span></div>`;
+    el.innerHTML = `<section class="stack fade">
+      <span class="eyebrow">${right ? "You got it" : `You guessed ${game.guess}%`}</span>
+      <div class="statwrap">
+        <div class="stack" style="gap:12px">
+          <div class="bignum">38%</div>
+          <p class="scenario">of men say they'd be very likely to turn to a friend for emotional support.</p>
+        </div>
+        <div class="sbars" aria-label="Who people would turn to for emotional support">
+          <div class="sgroup"><h3>Would turn to a friend</h3>${sb("Men", 38, true)}${sb("Women", 54)}</div>
+          <div class="sgroup"><h3>Would turn to a counselor</h3>${sb("Men", 16, true)}${sb("Women", 22)}</div>
+        </div>
+      </div>
+      <p class="callout">Friends are a great start. A counselor belongs on your team too.</p>
+      <p class="small">Pew Research Center survey of 6,204 U.S. adults, Sept. 2024.</p>
+      <div class="row"><button class="btn" id="next">Huddle up</button></div></section>`;
+    $("#next").onclick = () => go("huddle");
   }
   else if (screen === "huddle") {
-    el.innerHTML = `<section class="fade" style="display:flex;flex-direction:column;gap:26px">
-      <span class="eyebrow">Play called · huddle up</span>
+    el.innerHTML = `<section class="stack fade" style="gap:26px">
+      <span class="eyebrow">Huddle up</span>
       <h2>Here's what the playbook says</h2>
       <div class="huddle">
-        <div><b>It doesn't always look sad</b><span>For a lot of guys, struggling shows up as irritability, pulling away, or partying harder.</span></div>
+        <div><b>It doesn't always look sad</b><span>Struggling can look like irritability, pulling away, or partying harder, especially for men.</span></div>
         <div><b>Ask directly</b><span>A real “Are you actually okay?” doesn't make things worse. It opens the door.</span></div>
-        <div><b>Pass the ball</b><span>You're the teammate, not the therapist. Your job is to connect him to ${esc(cfg.where)}.</span></div>
+        <div><b>Pass the ball</b><span>You're the teammate, not the therapist. Your job is to connect them to ${esc(cfg.where)}.</span></div>
       </div>
       <div class="row"><button class="btn" id="next">Ready for play 2</button></div></section>`;
     $("#next").onclick = () => go("r2");
   }
-  else if (screen === "r2" || screen === "r2fb") {
-    const fb = screen === "r2fb", right = game.post === ROUND2.correct;
-    el.innerHTML = `<section class="fade" style="display:flex;flex-direction:column;gap:22px">
+  else if (screen === "r2") {
+    el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Play 2</span>
+      ${turnBanner("post", "pick your play")}
       <p class="scenario">${ROUND2.scenario}</p>
-      ${fb ? `<div class="feedback ${right ? "good" : "miss"}"><strong>${right ? "That's a team player." : "Close. Here's the best play."}</strong>
-        Leaning in and offering to go together makes it easy for him to say yes.</div>` : `<h2>What's your play?</h2>`}
-      ${cardsHTML("r2", fb ? game.post : null)}
-      ${fb ? `<div class="row"><button class="btn" id="next">One more play</button></div>` : ""}</section>`;
-    if (!fb) el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { game.post = b.dataset.pick; saveGame(); go("r2fb"); });
-    else $("#next").onclick = () => go("final");
+      <h2>What's your play?</h2>${cardsHTML("r2", false)}
+      ${group() ? `<p class="small">No peeking. Everyone's picks are revealed together.</p>` : ""}</section>`;
+    el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick("post", b.dataset.pick, "pass2", "r2fb", saveGame));
+  }
+  else if (screen === "r2fb") {
+    const made = game.players.filter(p => p.post === ROUND2.correct).length;
+    let head, cls;
+    if (!group()) { cls = made ? "good" : "miss"; head = made ? "That's a team player." : "Close. Here's the best play."; }
+    else { cls = made === game.size ? "good" : "miss"; head = made === game.size ? "The whole team made the play." : `${made} of ${game.size} made the play. Here's the best play.`; }
+    el.innerHTML = `<section class="stack fade">
+      <span class="eyebrow">Play 2 · The reveal</span>
+      <div class="feedback ${cls}"><strong>${head}</strong>
+        <span>Leaning in and offering to go together makes it easy for them to say yes.</span></div>
+      ${cardsHTML("r2", true)}
+      <div class="row"><button class="btn" id="next">One more question</button></div></section>`;
+    $("#next").onclick = () => go("useful");
+  }
+  else if (screen === "useful") {
+    el.innerHTML = `<section class="stack fade">
+      <span class="eyebrow">Post-game</span>
+      ${turnBanner("useful", "your answer")}
+      <h2>Was this useful?</h2>
+      <div class="opts">${USEFUL.map(u => `<button class="opt" data-u="${u.id}">${esc(u.text)}</button>`).join("")}</div></section>`;
+    el.querySelectorAll("[data-u]").forEach(b => b.onclick = () => {
+      const i = game.turn, v = b.dataset.u;
+      updateRow(i, { useful: v });
+      if (group() && i < game.size - 1) { game.players[i].useful = v; game.turn++; toast(`${pname(i)} locked in`); render(); bumpIdle(); return; }
+      game.players[i].useful = v; game.turn = 0; go("final");
+    });
   }
   else if (screen === "final") {
-    el.innerHTML = `<section class="fade" style="display:flex;flex-direction:column;gap:22px">
+    const toggles = game.players.map((p, i) => `<div class="savedrow" style="--pc:${PCOLORS[i]}">
+        ${group() ? `<span class="who">${pname(i)}</span>` : ""}
+        <button class="tog ${p.saved === true ? "on" : ""}" data-s="${i}" data-v="1">Saved ✓</button>
+        <button class="tog ${p.saved === false ? "on" : ""}" data-s="${i}" data-v="0">Skipped</button></div>`).join("");
+    el.innerHTML = `<section class="stack fade">
       <div class="final">
-        <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="stack" style="gap:16px">
           <span class="eyebrow">Final play</span>
-          <h2>Put the team on your bench</h2>
-          <p class="scenario">Scan the code to save the Counseling Center and crisis lines to your phone. Show the saved contact to grab your prize.</p>
+          <h2>Build your team</h2>
+          <p class="scenario">Add the Counseling Center to your contacts. Scan the code to save your new teammates:</p>
+          <ul class="roster">${ROSTER.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+          <p class="small">Plus links to our website, Instagram, outreach request form, and the Baylor Health Portal.</p>
           <p class="crisis">In a crisis anytime: <b>call or text 988</b>.</p>
         </div>
-        <div class="qr ${cfg.qr ? "" : "empty"}">${cfg.qr ? `<img src="${esc(cfg.qr)}" alt="QR code that saves the Counseling Center contact">` : "Scan the QR card on the table"}</div>
+        <div class="qr ${cfg.qr ? "" : "empty"}">${cfg.qr ? `<img src="${esc(cfg.qr)}" alt="QR code that saves the Counseling Center contacts">` : "Scan the QR card on the table"}</div>
       </div>
-      <div class="staffbar"><span class="lbl">Staff: contact saved?</span>
-        <button class="btn small" id="yes">Saved ✓</button>
-        <button class="btn small ghost" id="no">Skipped</button></div></section>`;
-    $("#yes").onclick = () => { markSaved(true); go("thanks"); };
-    $("#no").onclick = () => { markSaved(false); go("thanks"); };
+      <div class="staffbar"><span class="lbl">Staff: ${group() ? "who saved the contact?" : "contact saved?"}</span>
+        ${toggles}
+        <div class="row"><button class="btn small" id="finish">Finish game</button></div></div></section>`;
+    el.querySelectorAll("[data-s]").forEach(b => b.onclick = () => {
+      const i = +b.dataset.s, v = b.dataset.v === "1";
+      game.players[i].saved = game.players[i].saved === v ? null : v;
+      if (!group()) { updateRow(0, { saved: game.players[0].saved }); go("thanks"); return; }
+      render();
+    });
+    $("#finish").onclick = () => { game.players.forEach((p, i) => updateRow(i, { saved: p.saved })); go("thanks"); };
   }
   else if (screen === "thanks") {
-    el.innerHTML = `<section class="fade" style="display:flex;flex-direction:column;gap:22px;align-items:flex-start">
+    el.innerHTML = `<section class="stack fade" style="align-items:flex-start">
       <span class="eyebrow">Game over</span><h1>Thanks for<br>making the team.</h1>
-      <p class="scenario hand">Grab your prize, and check in on somebody this week.</p>
+      <p class="scenario hand">Grab your prize${group() ? "s" : ""}, and check in on somebody this week.</p>
       <button class="btn" id="next">Next player</button></section>`;
-    $("#next").onclick = () => go("start");
-    homeTimer = setTimeout(() => go("start"), 8000);
+    $("#next").onclick = () => { game = null; go("start"); };
+    homeTimer = setTimeout(() => { game = null; go("start"); }, 8000);
   }
   else if (screen === "staff") renderStaff(el);
 }
@@ -308,27 +481,40 @@ function wireHold(btn){
   btn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { confirm = ""; go("staff"); } });
 }
 
-/* ---------- saving on this device ---------- */
+/* ---------- saving on this device: one row per player ---------- */
 function saveGame(){
-  game.id = newId();
-  plays.unshift({ id: game.id, event: cfg.event, at: new Date().toISOString(),
-    preChoice: game.pre, pre: game.pre === ROUND1.correct,
-    postChoice: game.post, post: game.post === ROUND2.correct, saved: null });
+  const at = new Date().toISOString();
+  const rows = game.players.map((p, i) => ({
+    id: newId(), gameId: game.id, groupSize: game.size, player: i + 1, event: cfg.event, at,
+    preChoice: p.pre, pre: p.pre === ROUND1.correct,
+    statGuess: game.guess, statCorrect: game.guess === STAT.answer,
+    postChoice: p.post, post: p.post === ROUND2.correct,
+    useful: null, saved: null }));
+  game.rowIds = rows.map(r => r.id);
+  plays = [...rows.slice().reverse(), ...plays];
   savePlays();
 }
-function markSaved(v){
-  const p = plays.find(x => x.id === game?.id); if (!p) return;
-  p.saved = v; savePlays();
+function updateRow(i, patch){
+  const id = game?.rowIds?.[i]; if (!id) return;
+  const r = plays.find(x => x.id === id); if (!r) return;
+  Object.assign(r, patch); savePlays();
 }
 
 /* ---------- staff ---------- */
 function summarize(rows){
-  return { n: rows.length, pre: rows.filter(r => r.pre).length, post: rows.filter(r => r.post).length,
-    saved: rows.filter(r => r.saved === true).length, gained: rows.filter(r => !r.pre && r.post).length };
+  const answered = rows.filter(r => r.useful);
+  return { n: rows.length, games: new Set(rows.map(r => r.gameId)).size,
+    friends: rows.filter(r => r.groupSize > 1).length,
+    pre: rows.filter(r => r.pre).length, post: rows.filter(r => r.post).length,
+    saved: rows.filter(r => r.saved === true).length, gained: rows.filter(r => !r.pre && r.post).length,
+    statRight: rows.filter(r => r.statCorrect).length,
+    usefulN: answered.length,
+    useful: Object.fromEntries(USEFUL.map(u => [u.id, answered.filter(r => r.useful === u.id).length])) };
 }
 function toCSV(rows){
-  const head = "event,date_time,pre_choice,pre_correct,post_choice,post_correct,saved_contact";
-  const lines = rows.slice().reverse().map(p => [p.event, p.at, p.preChoice, p.pre, p.postChoice, p.post, p.saved === null ? "" : p.saved]
+  const head = "event,date_time,game_id,group_size,player,pre_choice,pre_correct,stat_guess,stat_correct,post_choice,post_correct,usefulness,saved_contact";
+  const lines = rows.slice().reverse().map(p => [p.event, p.at, p.gameId, p.groupSize, p.player, p.preChoice, p.pre, p.statGuess, p.statCorrect,
+    p.postChoice, p.post, p.useful ?? "", p.saved === null ? "" : p.saved]
     .map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
   return [head, ...lines].join("\n");
 }
@@ -355,10 +541,12 @@ function renderStaff(el){
   const rows = plays.filter(p => p.event === cfg.event);
   const s = summarize(rows);
   const events = [...new Set(plays.map(p => p.event))];
+  const u = s.useful;
   const statement = s.n
-    ? `At ${cfg.event} tabling, ${s.n} students played. ${pct(s.pre, s.n)}% chose to check in directly before the huddle; ${pct(s.post, s.n)}% chose to lean in and refer after. ${pct(s.saved, s.n)}% saved crisis and counseling contacts to their phone.`
+    ? `At ${cfg.event} tabling, ${s.n} students played across ${s.games} game${s.games === 1 ? "" : "s"} (${pct(s.friends, s.n)}% played with friends). ${pct(s.pre, s.n)}% chose to check in directly before the huddle; ${pct(s.post, s.n)}% chose to lean in and refer after. ${pct(u.learned_will_use, s.usefulN)}% said they learned something new and plan to use it, and ${pct(s.saved, s.n)}% saved crisis and counseling contacts to their phone.`
     : "";
   const unexported = plays.filter(p => !cfg.lastExport || p.at > cfg.lastExport).length;
+  const bar = (label, a, b, cls) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${pct(a, b)}%"></div></div><span class="v">${pct(a, b)}%</span></div>`;
   el.innerHTML = `<section class="panel fade">
     <div class="row" style="justify-content:space-between">
       <div><span class="eyebrow">Staff results · saved on this iPad only</span><h2>${esc(cfg.event)}</h2></div>
@@ -366,44 +554,47 @@ function renderStaff(el){
     </div>
     ${!storageOK ? `<div class="notice">This browser is blocking storage (often Private Browsing). Plays will be lost when the page closes. Turn off Private Browsing and reopen the game.</div>` : ""}
     ${plays.length ? `<div class="${unexported ? "notice" : "okline"}">${unexported
-      ? `${unexported} play${unexported === 1 ? "" : "s"} not exported yet. Export after every event so nothing is lost if the iPad's browser data is cleared.`
+      ? `${unexported} player${unexported === 1 ? "" : "s"} not exported yet. Export after every event so nothing is lost if the iPad's browser data is cleared.`
       : `All plays exported${cfg.lastExport ? " · last export " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
     ${s.n ? `
     <div class="stats">
-      <div class="stat"><div class="n">${s.n}</div><div class="l">Students played</div></div>
+      <div class="stat"><div class="n">${s.n}</div><div class="l">Students reached · ${s.games} game${s.games === 1 ? "" : "s"}, ${pct(s.friends, s.n)}% with friends</div></div>
       <div class="stat"><div class="n">${pct(s.pre, s.n)}%</div><div class="l">Knew the play before</div></div>
       <div class="stat gold"><div class="n">${pct(s.post, s.n)}%</div><div class="l">Made the play after</div></div>
-      <div class="stat"><div class="n">${pct(s.saved, s.n)}%</div><div class="l">Saved the contact</div></div>
+      <div class="stat"><div class="n">${pct(u.learned_will_use, s.usefulN)}%</div><div class="l">Learned something and will use it</div></div>
     </div>
-    <div class="bars" aria-label="Before and after comparison">
-      <div class="bar"><span>Before huddle</span><div class="track"><div class="fill" style="width:${pct(s.pre, s.n)}%"></div></div><span class="v">${s.pre}/${s.n}</span></div>
-      <div class="bar"><span>After huddle</span><div class="track"><div class="fill post" style="width:${pct(s.post, s.n)}%"></div></div><span class="v">${s.post}/${s.n}</span></div>
-      <div class="bar"><span>Saved contact</span><div class="track"><div class="fill saved" style="width:${pct(s.saved, s.n)}%"></div></div><span class="v">${s.saved}/${s.n}</span></div>
+    <div class="sec"><h3>Before and after</h3><div class="bars">
+      ${bar("Before huddle", s.pre, s.n, "")}
+      ${bar("After huddle", s.post, s.n, "post")}
+      ${bar("Saved the contact", s.saved, s.n, "saved")}
     </div>
-    <p class="muted" style="margin:0">${s.gained} student${s.gained === 1 ? "" : "s"} missed play 1 and made play 2.</p>
+    <p class="muted" style="margin:10px 0 0">${s.gained} student${s.gained === 1 ? "" : "s"} missed play 1 and made play 2. ${pct(s.statRight, s.n)}% guessed the friend stat (38%) correctly.</p></div>
+    <div class="sec"><h3>Was this useful?</h3><div class="bars">
+      ${USEFUL.map(x => bar(esc(x.text), u[x.id], s.usefulN, x.id === "learned_will_use" ? "post" : "")).join("")}
+    </div><p class="muted" style="margin:10px 0 0">Out of ${s.usefulN} who answered.</p></div>
     <div class="sec"><h3>Impact statement</h3><div class="statement">${esc(statement)}</div></div>`
-    : `<p class="scenario muted">No plays yet for this event. Each finished game adds a row: what the student picked before the huddle, after it, and whether they saved the contact.</p>`}
+    : `<p class="scenario muted">No plays yet for this event. Each finished game adds one row per player: their picks before and after the huddle, their stat guess, how useful it was, and whether they saved the contact.</p>`}
     <div class="sec"><h3>Results</h3>
       <div class="row">
         <button class="btn small" id="export" ${plays.length ? "" : "disabled"}>Export results (CSV)</button>
-        <button class="btn small ghost" id="undo" ${rows.length ? "" : "disabled"}>${confirm === "undo" ? "Tap again to delete last play" : "Undo last play"}</button>
+        <button class="btn small ghost" id="undo" ${rows.length ? "" : "disabled"}>${confirm === "undo" ? "Tap again to delete last game" : "Undo last game"}</button>
         <button class="btn small warn" id="clear" ${plays.length ? "" : "disabled"}>${confirm === "clear" ? "Tap again to erase all results" : "Erase all results"}</button>
       </div>
       <textarea class="csv" id="csvBox" readonly hidden>${esc(toCSV(plays))}</textarea>
     </div>
     <div class="sec"><h3>Event setup</h3>
-      <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="stack" style="gap:14px">
         <div class="field"><label for="evName">Event name (results are grouped by this)</label><input type="text" id="evName" value="${esc(cfg.event)}"></div>
-        <div class="field"><label for="where">Huddle point 3 ends with “connect him to …”</label><input type="text" id="where" value="${esc(cfg.where)}"></div>
+        <div class="field"><label for="where">Huddle point 3 ends with “connect them to …”</label><input type="text" id="where" value="${esc(cfg.where)}"></div>
         <div class="row"><button class="btn small" id="saveCfg">Save setup</button></div>
         <div class="field"><label for="qrFile">vCard QR image for the final play ${cfg.qr ? "(added)" : "(not added yet)"}</label>
           <input type="file" id="qrFile" accept="image/*"></div>
         ${cfg.qr ? `<div class="row"><img src="${esc(cfg.qr)}" alt="Current QR image" style="width:90px;height:90px;background:#fff;border-radius:4px;padding:4px"><button class="btn small ghost" id="rmQr">Remove QR image</button></div>` : ""}
       </div></div>
     ${events.length ? `<div class="sec"><h3>All events on this iPad</h3><div class="tablewrap"><table>
-      <thead><tr><th>Event</th><th>Played</th><th>Before</th><th>After</th><th>Saved</th></tr></thead><tbody>
+      <thead><tr><th>Event</th><th>Students</th><th>Games</th><th>Before</th><th>After</th><th>Learned & will use</th><th>Saved</th></tr></thead><tbody>
       ${events.map(ev => { const t = summarize(plays.filter(p => p.event === ev));
-        return `<tr><td>${esc(ev)}</td><td>${t.n}</td><td>${pct(t.pre, t.n)}%</td><td>${pct(t.post, t.n)}%</td><td>${pct(t.saved, t.n)}%</td></tr>`; }).join("")}
+        return `<tr><td>${esc(ev)}</td><td>${t.n}</td><td>${t.games}</td><td>${pct(t.pre, t.n)}%</td><td>${pct(t.post, t.n)}%</td><td>${pct(t.useful.learned_will_use, t.usefulN)}%</td><td>${pct(t.saved, t.n)}%</td></tr>`; }).join("")}
       </tbody></table></div></div>` : ""}
   </section>`;
   $("#back").onclick = () => { confirm = ""; go("start"); };
@@ -411,7 +602,7 @@ function renderStaff(el){
   $("#undo").onclick = () => {
     if (confirm !== "undo") { confirm = "undo"; render(); return; }
     confirm = ""; const last = rows[0];
-    if (last) { plays = plays.filter(p => p.id !== last.id); savePlays(); toast("Last play deleted"); }
+    if (last) { plays = plays.filter(p => p.gameId !== last.gameId); savePlays(); toast("Last game deleted"); }
     render();
   };
   $("#clear").onclick = () => {

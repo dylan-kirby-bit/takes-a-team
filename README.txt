@@ -1,16 +1,19 @@
-TAKES A TEAM PLAYBOOK — OFFLINE iPAD VERSION
+TAKES A TEAM PLAYBOOK — iPAD GAME, VERSION 2
 Baylor University Counseling Center outreach · Men's Mental Health Month
 
 WHAT IT IS
-A 90-second tabling game. Students answer one scenario (pre), staff teach
-three points, students answer a second scenario (post), then scan the
-Counseling Center vCard QR code. Staff see before/after results and export
-them as a CSV.
+A 2-minute tabling game for 1 to 3 players, run by staff on an iPad.
+  Play 1 (pre-test) > Guess the stat > Huddle > Play 2 (post-test)
+  > Was this useful? > Build your team (vCard QR) > Thanks
+In group mode, each player locks in a secret pick, and answers are
+revealed together. An abandoned game returns to the start after 2 minutes.
 
 WHAT DATA IT KEEPS
-For each finished game, one row:
-  event name, date/time, card picked in Play 1 and Play 2,
-  right or wrong for each, and whether staff tapped Saved or Skipped.
+One row per player:
+  event name, date/time, game ID, group size, player number,
+  Play 1 pick and whether it was right, the group's stat guess,
+  Play 2 pick and whether it was right, usefulness answer,
+  and whether staff marked the contact as saved.
 It does NOT collect names, emails, student IDs, photos, location, or any
 device information.
 
@@ -18,50 +21,36 @@ WHERE THE DATA LIVES
 Only in the browser storage on the iPad running the game. The page makes no
 network requests: no analytics, no outside fonts, no third-party code. Data
 leaves the iPad only when staff tap "Export results (CSV)" and choose where
-to save or send the file (for example, a university OneDrive folder).
+to save it.
 
-FILES (keep them together in one folder)
-  index.html            the game
-  sw.js                 lets the game load with no internet after first visit
-  manifest.webmanifest  app name and icon for the iPad home screen
-  icon-180.png, icon-512.png
+The statistic shown comes from Pew Research Center, "Men, Women and Social
+Connections" (survey of 6,204 U.S. adults, Sept. 3-15, 2024):
+https://www.pewresearch.org/social-trends/2025/01/16/men-women-and-social-connections/
 
 ------------------------------------------------------------
-STEP 1 — HOST THE FOLDER (one time, usually IT or web services)
-iPads won't run a game file opened from the Files app, so the folder needs
-to be served from a web address, ideally university web space.
-  - Upload all five files to one folder on a university web server (https).
-  - Example address: https://<university site>/outreach/takes-a-team/
-Nothing on the server stores data; it only delivers the game files.
+UPDATING YOUR GITHUB SITE FROM VERSION 1
+  1. Open your takes-a-team repository on GitHub.
+  2. Click Add file > Upload files. Drag in index.html, sw.js and
+     README.txt from this folder. GitHub replaces the old copies.
+     Click Commit changes.
+  3. Wait 1 to 3 minutes. On the iPad, open the game once with internet,
+     close it, and open it again. You should see "Play solo," "With a
+     friend," and "With two friends" on the start screen.
+Your QR image and event name carry over. Version 1 results stay on the
+iPad but don't show in the version 2 staff screen, so export them first if
+you still need them.
 
-STEP 2 — SET UP EACH iPAD (one time per iPad)
-  1. Open the address in Safari. Make sure Private Browsing is OFF.
-  2. Tap Share > Add to Home Screen > Add.
-  3. Open "Takes a Team" from the Home Screen (not from Safari).
-     From now on, it opens with no internet.
-  4. Press and hold "Staff · hold" in the bottom corner for 1 second.
-     - Check the event name.
-     - Under "vCard QR image," add a screenshot or image of your QR code.
-  5. Optional: turn on Guided Access (Settings > Accessibility >
-     Guided Access) so students can't leave the game.
+FIRST-TIME SETUP (if you haven't hosted version 1)
+  1. Upload all files in this folder to a public GitHub repository and
+     turn on GitHub Pages (Settings > Pages > Deploy from a branch >
+     main, / (root)).
+  2. On the iPad, open the site in Safari (Private Browsing off), then
+     Share > Add to Home Screen. Open it from the Home Screen icon.
+  3. Hold "Staff · hold" for 1 second, check the event name, and add your
+     vCard QR image.
+  4. Optional: turn on Guided Access (Settings > Accessibility).
 
-Results saved inside the Home Screen app stay separate from Safari, so
-always use the Home Screen icon.
-
-STEP 3 — AFTER EVERY EVENT
-  1. Press and hold "Staff · hold."
+AFTER EVERY EVENT
+  1. Hold "Staff · hold."
   2. Tap "Export results (CSV)" and save it to your team folder.
-  3. Once the file is saved, you can tap "Erase all results" for a clean
-     start. The staff screen warns you if any plays haven't been exported.
-
-Each iPad keeps its own results. If two iPads run the same event, export
-both and combine the CSVs.
-
-ON A LAPTOP
-Double-click index.html to open it in Chrome, Edge, or Safari. It works the
-same, except it needs the file each time (no offline install).
-
-UPDATING THE GAME LATER
-Replace index.html on the server and change VERSION in sw.js
-(for example, to "takes-a-team-v2"). iPads pick up the update the next time
-they open the game with internet.
+  3. Once it's saved, tap "Erase all results" for a clean start.

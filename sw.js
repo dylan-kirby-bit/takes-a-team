@@ -1,6 +1,6 @@
 // Keeps the game working with no internet after the first visit.
 // Change VERSION whenever index.html is updated so iPads pick up the new copy.
-const VERSION = "takes-a-team-v1";
+const VERSION = "takes-a-team-v2";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
