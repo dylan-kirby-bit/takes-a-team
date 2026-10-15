@@ -122,7 +122,10 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 /* final */
 .final{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center}
 @media (max-width:760px){.final{grid-template-columns:1fr}}
-.qr{width:min(300px,70vw);aspect-ratio:1;max-width:100%;background:#fff;border-radius:6px;display:grid;place-items:center;padding:14px}
+.qrs{display:flex;gap:18px;flex-wrap:wrap}
+.qrs figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.qrs figcaption{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;color:var(--gold)}
+.qr{width:min(230px,40vw);aspect-ratio:1;max-width:100%;background:#fff;border-radius:6px;display:grid;place-items:center;padding:12px}
 .qr img{width:100%;height:100%;object-fit:contain}
 .qr.empty{background:transparent;border:2.5px dashed var(--chalk-dim);color:var(--chalk-dim);text-align:center;font-family:var(--hand);font-size:1.3rem}
 .roster{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -189,7 +192,8 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 "use strict";
 /* All results stay in this browser's storage on this device. The page sends nothing anywhere. */
 const KEY_PLAYS = "takesATeam.plays.v2", KEY_CFG = "takesATeam.config.v1";
-const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor University Counseling Center", qr: "", lastExport: "" };
+const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor University Counseling Center", qrIos: "", qrAndroid: "", lastExport: "" };
+const QRS = [ { key: "qrIos", label: "iPhone" }, { key: "qrAndroid", label: "Android" } ];
 const IDLE_MS = 120000;   // an abandoned game returns to the start screen after 2 minutes
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
@@ -468,12 +472,14 @@ function render(){
         <div class="stack" style="gap:16px">
           <span class="eyebrow">Final play</span>
           <h2>Build your team</h2>
-          <p class="scenario">Add the Counseling Center to your contacts. Scan the code to save your new teammates:</p>
+          <p class="scenario">Add the Counseling Center to your contacts. Scan the code for your phone to save your new teammates:</p>
           <ul class="roster">${ROSTER.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
           <p class="small">Plus links to our website, Instagram, outreach request form, and the Baylor Health Portal.</p>
           <p class="crisis">In a crisis anytime: <b>call or text 988</b>.</p>
         </div>
-        <div class="qr ${cfg.qr ? "" : "empty"}">${cfg.qr ? `<img src="${esc(cfg.qr)}" alt="QR code that saves the Counseling Center contacts">` : "Scan the QR card on the table"}</div>
+        <div class="qrs">${QRS.map(q => `<figure>
+          <div class="qr ${cfg[q.key] ? "" : "empty"}">${cfg[q.key] ? `<img src="${esc(cfg[q.key])}" alt="${q.label} QR code that saves the Counseling Center contacts">` : `${q.label} code on the table`}</div>
+          <figcaption>${q.label}</figcaption></figure>`).join("")}</div>
       </div>
       <div class="staffbar"><span class="lbl">Staff: ${group() ? "who saved the contact?" : "contact saved?"}</span>
         ${toggles}
@@ -616,9 +622,9 @@ function renderStaff(el){
         <div class="field"><label for="evName">Event name (results are grouped by this)</label><input type="text" id="evName" value="${esc(cfg.event)}"></div>
         <div class="field"><label for="where">Huddle point 3 ends with “connect them to …”</label><input type="text" id="where" value="${esc(cfg.where)}"></div>
         <div class="row"><button class="btn small" id="saveCfg">Save setup</button></div>
-        <div class="field"><label for="qrFile">vCard QR image for the final play ${cfg.qr ? "(added)" : "(not added yet)"}</label>
-          <input type="file" id="qrFile" accept="image/*"></div>
-        ${cfg.qr ? `<div class="row"><img src="${esc(cfg.qr)}" alt="Current QR image" style="width:90px;height:90px;background:#fff;border-radius:4px;padding:4px"><button class="btn small ghost" id="rmQr">Remove QR image</button></div>` : ""}
+        ${QRS.map(q => `<div class="field"><label for="file-${q.key}">${q.label} vCard QR image ${cfg[q.key] ? "(added)" : "(not added yet)"}</label>
+          <input type="file" id="file-${q.key}" data-qr="${q.key}" accept="image/*"></div>
+        ${cfg[q.key] ? `<div class="row"><img src="${esc(cfg[q.key])}" alt="Current ${q.label} QR image" style="width:90px;height:90px;background:#fff;border-radius:4px;padding:4px"><button class="btn small ghost" data-rmqr="${q.key}">Remove ${q.label} QR</button></div>` : ""}`).join("")}
       </div></div>
     ${events.length ? `<div class="sec"><h3>All events on this iPad</h3><div class="tablewrap"><table>
       <thead><tr><th>Event</th><th>Students</th><th>Games</th><th>Before</th><th>After</th><th>Learned & will use</th><th>Saved</th></tr></thead><tbody>
@@ -643,7 +649,8 @@ function renderStaff(el){
     cfg.where = $("#where").value.trim() || DEFAULTS.where;
     saveCfg(); toast("Setup saved"); render();
   };
-  $("#qrFile").onchange = e => {
+  el.querySelectorAll("[data-qr]").forEach(input => input.onchange = e => {
+    const key = input.dataset.qr, label = QRS.find(q => q.key === key).label;
     const f = e.target.files[0]; if (!f) return;
     const img = new Image(), url = URL.createObjectURL(f);
     img.onload = () => {
@@ -652,12 +659,12 @@ function renderStaff(el){
       const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
       ctx.imageSmoothingEnabled = false; ctx.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      cfg.qr = c.toDataURL("image/png"); saveCfg(); toast("QR image added"); render();
+      cfg[key] = c.toDataURL("image/png"); saveCfg(); toast(`${label} QR added`); render();
     };
     img.onerror = () => { URL.revokeObjectURL(url); toast("That file isn't an image. Try a PNG or JPG."); };
     img.src = url;
-  };
-  if ($("#rmQr")) $("#rmQr").onclick = () => { cfg.qr = ""; saveCfg(); render(); };
+  });
+  el.querySelectorAll("[data-rmqr]").forEach(b => b.onclick = () => { cfg[b.dataset.rmqr] = ""; saveCfg(); render(); });
 }
 
 /* ---------- boot ---------- */

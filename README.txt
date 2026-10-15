@@ -37,7 +37,9 @@ UPDATING YOUR GITHUB SITE (from version 1 or an earlier version 2)
   3. Wait 1 to 3 minutes. On the iPad, open the game once with internet,
      close it, and open it again. You should see "Play solo," "With a
      friend," and "With two friends" on the start screen.
-Your QR image and event name carry over. Version 1 results stay on the
+Your event name carries over. The final screen now has separate iPhone
+and Android QR codes, so add both under Staff > Event setup (a QR image
+added in version 1 won't carry over). Version 1 results stay on the
 iPad but don't show in the version 2 staff screen, so export them first if
 you still need them.
 
@@ -47,8 +49,8 @@ FIRST-TIME SETUP (if you haven't hosted version 1)
      main, / (root)).
   2. On the iPad, open the site in Safari (Private Browsing off), then
      Share > Add to Home Screen. Open it from the Home Screen icon.
-  3. Hold "Staff · hold" for 1 second, check the event name, and add your
-     vCard QR image.
+  3. Hold "Staff · hold" for 1 second, check the event name, and add both
+     vCard QR images (iPhone and Android).
   4. Optional: turn on Guided Access (Settings > Accessibility).
 
 AFTER EVERY EVENT
