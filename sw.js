@@ -1,10 +1,12 @@
-// Keeps the game working with no internet after the first visit.
-// Change VERSION whenever index.html is updated so iPads pick up the new copy.
-const VERSION = "takes-a-team-v4";
+// Keeps the game working with no internet, while always loading the newest
+// game when the iPad is online.
+// Change VERSION whenever you update the files so iPads refresh their offline copy.
+const VERSION = "takes-a-team-v5";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)));
+  // cache: "reload" skips the browser's own cache, so a fresh copy is saved
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, { cache: "reload" })))));
   self.skipWaiting();
 });
 
@@ -14,9 +16,25 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
+  const req = e.request;
+  if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+
+  // The game page itself: try the internet first, fall back to the saved copy offline.
+  if (req.mode === "navigate" || new URL(req.url).pathname.endsWith("/index.html")) {
+    e.respondWith(
+      fetch(req, { cache: "no-store" })
+        .then(res => {
+          const copy = res.clone();
+          caches.open(VERSION).then(c => c.put("./index.html", copy));
+          return res;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  // Icons and other files: saved copy first.
   e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(hit => hit ||
-      fetch(e.request).catch(() => caches.match("./index.html")))
+    caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req))
   );
 });

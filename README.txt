@@ -34,9 +34,12 @@ UPDATING YOUR GITHUB SITE (from version 1 or an earlier version 2)
   2. Click Add file > Upload files. Drag in index.html, sw.js and
      README.txt from this folder. GitHub replaces the old copies.
      Click Commit changes.
-  3. Wait 1 to 3 minutes. On the iPad, open the game once with internet,
-     close it, and open it again. You should see "Play solo," "With a
-     friend," and "With two friends" on the start screen.
+  3. Wait about 10 minutes (GitHub holds the old copy that long). Then,
+     with the iPad online, open the game, close it fully (swipe it
+     away), and open it again. Repeat until the Staff screen shows two
+     QR upload slots (iPhone and Android). This first switch can take
+     2 or 3 opens. After that, future updates show up the next time the
+     game opens online.
 Your event name carries over. The final screen now has separate iPhone
 and Android QR codes, so add both under Staff > Event setup (a QR image
 added in version 1 won't carry over). Version 1 results stay on the
