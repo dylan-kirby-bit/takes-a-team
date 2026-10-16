@@ -93,6 +93,15 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .guess button b{font-weight:800;font-size:clamp(2.2rem,5vw,3rem);line-height:1;font-variant-numeric:tabular-nums;text-align:left}
 .guess button:active{background:var(--turf-3)}
 .guess button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.guess.gut button{font-weight:800;font-size:clamp(1.6rem,3.6vw,2.2rem);text-transform:uppercase;letter-spacing:.04em;display:block;text-align:center;padding:26px 12px}
+.hud{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.hud{grid-template-columns:1fr}}
+.callcard{border-radius:6px;padding:16px 18px;text-align:center;font-weight:800;font-size:clamp(1.15rem,2.1vw,1.4rem);line-height:1.3}
+.callcard.men{background:var(--gold);color:var(--gold-ink)}
+.callcard.women{background:var(--chalk);color:var(--turf)}
+.fullteam{border:3px solid var(--gold);border-radius:6px;padding:16px;text-align:center;color:var(--gold);font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(1.6rem,3vw,2.1rem);line-height:1.1;letter-spacing:.02em}
+.huddle.plays{grid-template-columns:1fr;gap:14px}
+.huddle.plays b{font-size:1.4rem}
 .statwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
 @media (max-width:760px){.statwrap{grid-template-columns:1fr}}
 .bignum{font-family:var(--display);font-weight:800;font-size:clamp(5rem,14vw,8.5rem);line-height:.85;color:var(--gold)}
@@ -226,18 +235,10 @@ const ROUND2 = {
     { id: "shrug",  title: "Tell them it's normal", sub: "“Everybody gets stressed. You'll be fine.”", d: "space" }
   ]
 };
-/* Pew Research Center, Sept. 2024: share who'd be extremely/very likely to turn to each source for emotional support */
-const STATQ = [
-  { key: "friend", label: "Would turn to a friend",
-    prompt: "What percent would be very likely to turn to a <b>friend</b> for emotional support?",
-    real: { m: 38, w: 54 }, correct: "m38w54",
-    choices: [ { id: "m18w24", m: 18, w: 24 }, { id: "m38w54", m: 38, w: 54 }, { id: "m54w38", m: 54, w: 38 } ] },
-  { key: "counselor", label: "Would turn to a counselor",
-    prompt: "What percent would be very likely to turn to a <b>counselor</b> for emotional support?",
-    real: { m: 16, w: 22 }, correct: "m16w22",
-    choices: [ { id: "m16w22", m: 16, w: 22 }, { id: "m22w16", m: 22, w: 16 }, { id: "m46w52", m: 46, w: 52 } ] }
-];
-const pairText = id => { const m = /^m(\d+)w(\d+)$/.exec(id || ""); return m ? `Men ${m[1]}% · Women ${m[2]}%` : ""; };
+/* Gut check, answered by the Pew Research Center survey of U.S. adults, Sept. 2024
+   (share very likely to turn to each source for emotional support: men 38% friend / 16% counselor; women 54% / 22%) */
+const GUT = { correct: "women", choices: [ { id: "men", label: "Men" }, { id: "women", label: "Women" }, { id: "same", label: "About the same" } ] };
+const gutLabel = id => (GUT.choices.find(c => c.id === id) || {}).label || "";
 const USEFUL = [
   { id: "learned_will_use",  text: "I learned something new, and I'll use it." },
   { id: "learned_wont_use",  text: "I learned something new, but I probably won't use it." },
@@ -275,7 +276,7 @@ function diagram(kind){
 /* ---------- navigation ---------- */
 function downs(){
   const steps = ["Play 1", "Huddle", "Play 2", "Wrap-up"];
-  const order = { r1:0, pass1:0, stat:1, statReveal:1, huddle:1, r2:2, pass2:2, r2fb:2, useful:3, final:3, thanks:4 };
+  const order = { r1:0, pass1:0, stat:1, huddle:1, r2:2, pass2:2, r2fb:2, useful:3, final:3, thanks:4 };
   const at = order[screen];
   $("#downs").innerHTML = at === undefined ? "" : steps.map((s, i) =>
     `<span class="${at === i ? "on" : at > i ? "done" : ""}">${s}</span>`).join("");
@@ -289,8 +290,8 @@ function bumpIdle(){
 document.addEventListener("pointerdown", bumpIdle, { passive: true });
 
 function newGame(size){
-  game = { id: newId(), size, turn: 0, statQ: 0, rowIds: [],
-    players: Array.from({ length: size }, () => ({ pre: null, friend: null, counselor: null, post: null, useful: null, saved: null })),
+  game = { id: newId(), size, turn: 0, rowIds: [],
+    players: Array.from({ length: size }, () => ({ pre: null, gut: null, post: null, useful: null, saved: null })),
     order: { r1: shuffle(ROUND1.options), r2: shuffle(ROUND2.options) } };
 }
 
@@ -375,54 +376,46 @@ function render(){
     $("#ready").onclick = () => go(screen === "pass1" ? "r1" : "r2");
   }
   else if (screen === "stat") {
-    const Q = STATQ[game.statQ];
     el.innerHTML = `<section class="stack fade">
-      <span class="eyebrow">Huddle · Guess the stat · ${game.statQ + 1} of 2</span>
-      ${game.statQ === 0 ? `<h2>Everyone needs support. Have you built your whole team?</h2>` : ""}
-      ${turnBanner(Q.key, "your guess")}
-      <p class="scenario">${Q.prompt}</p>
-      <div class="guess">${Q.choices.map(c => `<button data-g="${c.id}"><span>Men</span><b>${c.m}%</b><span>Women</span><b>${c.w}%</b></button>`).join("")}</div></section>`;
+      <span class="eyebrow">Huddle · Gut check</span>
+      <h2>Everyone needs support.</h2>
+      ${turnBanner("gut", "your gut check")}
+      <p class="scenario">Who's more likely to turn to a <b>friend</b> for emotional support?</p>
+      <div class="guess gut">${GUT.choices.map(c => `<button data-g="${c.id}">${c.label}</button>`).join("")}</div></section>`;
     el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => {
       const i = game.turn;
-      game.players[i][Q.key] = b.dataset.g;
+      game.players[i].gut = b.dataset.g;
       if (group() && i < game.size - 1) { game.turn++; toast(`${pname(i)} locked in`); render(); bumpIdle(); return; }
       game.turn = 0;
-      if (game.statQ === 0) { game.statQ = 1; render(); window.scrollTo(0, 0); bumpIdle(); return; }
-      go("statReveal");
+      go("huddle");
     });
   }
-  else if (screen === "statReveal") {
-    const score = p => STATQ.filter(Q => p[Q.key] === Q.correct).length;
-    let eyebrow;
-    if (!group()) { const s = score(game.players[0]); eyebrow = s === 2 ? "You got both" : s === 1 ? "You got 1 of 2" : "Here are the real numbers"; }
-    else eyebrow = "The real numbers";
-    const sb = (label, v, men) => `<div class="sbar"><span>${label}</span><div class="strack"><div class="sfill ${men ? "men" : ""}" style="width:${v}%"></div></div><span class="v">${v}%</span></div>`;
-    const guesses = Q => group()
-      ? `<div class="results">${game.players.map((p, j) => `<span class="chip ${p[Q.key] === Q.correct ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)} ${p[Q.key] === Q.correct ? "✓" : "✗"}</span>`).join("")}</div>`
-      : `<p class="small">You guessed ${pairText(game.players[0][Q.key])} ${game.players[0][Q.key] === Q.correct ? "✓" : "✗"}</p>`;
-    el.innerHTML = `<section class="stack fade">
-      <span class="eyebrow">${eyebrow}</span>
-      <div class="statwrap">
-        <div class="stack" style="gap:14px">
-          <h2>Everyone needs support.</h2>
-          <p class="callout">Friends are a great start. A counselor belongs on your team too.</p>
-          <p class="small">Share of U.S. adults who say they'd be very likely to turn to each for emotional support. Pew Research Center survey of 6,204 U.S. adults, Sept. 2024.</p>
-        </div>
-        <div class="sbars" aria-label="Who people would turn to for emotional support">
-          ${STATQ.map(Q => `<div class="sgroup"><h3>${Q.label}</h3>${sb("Men", Q.real.m, true)}${sb("Women", Q.real.w)}<div style="margin-top:8px">${guesses(Q)}</div></div>`).join("")}
-        </div>
-      </div>
-      <div class="row"><button class="btn" id="next">Huddle up</button></div></section>`;
-    $("#next").onclick = () => go("huddle");
-  }
   else if (screen === "huddle") {
-    el.innerHTML = `<section class="stack fade" style="gap:26px">
-      <span class="eyebrow">Huddle up</span>
-      <h2>Here's what the playbook says</h2>
-      <div class="huddle">
-        <div><b>It doesn't always look sad</b><span>Struggling can look like irritability, pulling away, or partying harder, especially for men.</span></div>
-        <div><b>Ask directly</b><span>A real “Are you actually okay?” doesn't make things worse. It opens the door.</span></div>
-        <div><b>Pass the ball</b><span>You're the teammate, not the therapist. Your job is to connect them to ${esc(cfg.where)}.</span></div>
+    const gutLine = group()
+      ? `<div class="results"><span class="small" style="align-self:center">Gut check: women.</span>${game.players.map((p, j) => `<span class="chip ${p.gut === GUT.correct ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)} ${p.gut === GUT.correct ? "✓" : "✗"}</span>`).join("")}</div>`
+      : `<p class="small">Gut check: women. ${game.players[0].gut === GUT.correct ? "You got it ✓" : `You said ${esc(gutLabel(game.players[0].gut).toLowerCase())}.`}</p>`;
+    el.innerHTML = `<section class="stack fade" style="gap:22px">
+      <div class="stack" style="gap:8px">
+        <span class="eyebrow">Huddle · Check the score</span>
+        <h2>Have you built your whole team?</h2>
+        <p class="scenario" style="font-size:1.2rem">Quick breather before the next play.</p>
+        ${gutLine}
+      </div>
+      <div class="hud">
+        <div class="stack" style="gap:12px">
+          <div class="callcard men">38% of men would lean on a friend.<br>Only 16% would talk to a counselor.</div>
+          <div class="callcard women">54% of women would lean on a friend.<br>Only 22% would talk to a counselor.</div>
+          <div class="fullteam">A full team has <u>both</u>:<br>friends and a counselor.</div>
+          <p class="small" style="text-align:center">Pew Research Center survey of U.S. adults, Sept. 2024.</p>
+        </div>
+        <div class="stack" style="gap:12px">
+          <span class="eyebrow">Huddle · Get the play call</span>
+          <div class="huddle plays">
+            <div><b>It doesn't always look sad</b><span>Struggling can look like irritability, pulling away, or partying harder, especially for men.</span></div>
+            <div><b>Ask directly</b><span>A real “Are you actually okay?” doesn't make things worse. It opens the door.</span></div>
+            <div><b>Pass the ball</b><span>You're the friend on their team. Help them add the counselor: ${esc(cfg.where)}.</span></div>
+          </div>
+        </div>
       </div>
       <div class="row"><button class="btn" id="next">Ready for play 2</button></div></section>`;
     $("#next").onclick = () => go("r2");
@@ -519,8 +512,7 @@ function saveGame(){
   const rows = game.players.map((p, i) => ({
     id: newId(), gameId: game.id, groupSize: game.size, player: i + 1, event: cfg.event, at,
     preChoice: p.pre, pre: p.pre === ROUND1.correct,
-    friendGuess: p.friend, friendCorrect: p.friend === STATQ[0].correct,
-    counselorGuess: p.counselor, counselorCorrect: p.counselor === STATQ[1].correct,
+    gutCheck: p.gut, gutCorrect: p.gut === GUT.correct,
     postChoice: p.post, post: p.post === ROUND2.correct,
     useful: null, saved: null }));
   game.rowIds = rows.map(r => r.id);
@@ -540,15 +532,14 @@ function summarize(rows){
     friends: rows.filter(r => r.groupSize > 1).length,
     pre: rows.filter(r => r.pre).length, post: rows.filter(r => r.post).length,
     saved: rows.filter(r => r.saved === true).length, gained: rows.filter(r => !r.pre && r.post).length,
-    friendRight: rows.filter(r => r.friendCorrect).length,
-    counselorRight: rows.filter(r => r.counselorCorrect).length,
+    gutRight: rows.filter(r => r.gutCorrect).length,
     usefulN: answered.length,
     useful: Object.fromEntries(USEFUL.map(u => [u.id, answered.filter(r => r.useful === u.id).length])) };
 }
 function toCSV(rows){
-  const head = "event,date_time,game_id,group_size,player,pre_choice,pre_correct,friend_stat_guess,friend_stat_correct,counselor_stat_guess,counselor_stat_correct,post_choice,post_correct,usefulness,saved_contact";
+  const head = "event,date_time,game_id,group_size,player,pre_choice,pre_correct,gut_check,gut_check_correct,post_choice,post_correct,usefulness,saved_contact";
   const lines = rows.slice().reverse().map(p => [p.event, p.at, p.gameId, p.groupSize, p.player, p.preChoice, p.pre,
-    pairText(p.friendGuess), p.friendGuess ? p.friendCorrect : "", pairText(p.counselorGuess), p.counselorGuess ? p.counselorCorrect : "",
+    gutLabel(p.gutCheck), p.gutCheck ? p.gutCorrect : "",
     p.postChoice, p.post, p.useful ?? "", p.saved === null || p.saved === undefined ? "" : p.saved]
     .map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
   return [head, ...lines].join("\n");
@@ -603,7 +594,7 @@ function renderStaff(el){
       ${bar("After huddle", s.post, s.n, "post")}
       ${bar("Saved the contact", s.saved, s.n, "saved")}
     </div>
-    <p class="muted" style="margin:10px 0 0">${s.gained} student${s.gained === 1 ? "" : "s"} missed play 1 and made play 2. ${pct(s.friendRight, s.n)}% got the friend stat right; ${pct(s.counselorRight, s.n)}% got the counselor stat right.</p></div>
+    <p class="muted" style="margin:10px 0 0">${s.gained} student${s.gained === 1 ? "" : "s"} missed play 1 and made play 2. ${pct(s.gutRight, s.n)}% got the gut check right (women).</p></div>
     <div class="sec"><h3>Was this useful?</h3><div class="bars">
       ${USEFUL.map(x => bar(esc(x.text), u[x.id], s.usefulN, x.id === "learned_will_use" ? "post" : "")).join("")}
     </div><p class="muted" style="margin:10px 0 0">Out of ${s.usefulN} who answered.</p></div>

@@ -3,7 +3,7 @@ Baylor University Counseling Center outreach · Men's Mental Health Month
 
 WHAT IT IS
 A 2-minute tabling game for 1 to 3 players, run by staff on an iPad.
-  Play 1 (pre-test) > Guess the stat > Huddle > Play 2 (post-test)
+  Play 1 (pre-test) > Gut check > Huddle > Play 2 (post-test)
   > Was this useful? > Build your team (vCard QR) > Thanks
 In group mode, each player locks in a secret pick, and answers are
 revealed together. An abandoned game returns to the start after 2 minutes.
@@ -11,8 +11,8 @@ revealed together. An abandoned game returns to the start after 2 minutes.
 WHAT DATA IT KEEPS
 One row per player:
   event name, date/time, game ID, group size, player number,
-  Play 1 pick and whether it was right, their friend-stat and
-  counselor-stat guesses and whether each was right,
+  Play 1 pick and whether it was right, their gut-check answer
+  (men / women / about the same) and whether it was right,
   Play 2 pick and whether it was right, usefulness answer,
   and whether staff marked the contact as saved.
 It does NOT collect names, emails, student IDs, photos, location, or any
