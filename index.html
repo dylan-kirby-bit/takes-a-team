@@ -94,14 +94,18 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .guess button:active{background:var(--turf-3)}
 .guess button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .guess.gut button{font-weight:800;font-size:clamp(1.6rem,3.6vw,2.2rem);text-transform:uppercase;letter-spacing:.04em;display:block;text-align:center;padding:26px 12px}
-.hud{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
-@media (max-width:860px){.hud{grid-template-columns:1fr}}
-.callcard{border-radius:6px;padding:16px 18px;text-align:center;font-weight:800;font-size:clamp(1.15rem,2.1vw,1.4rem);line-height:1.3}
+.guess.gut button.right{border-color:var(--good);background:var(--turf-3);color:var(--good)}
+.guess.gut button.wrong{border-color:var(--miss);opacity:.6}
+.guess.gut button[disabled]{cursor:default}
+.reveal{display:flex;flex-direction:column;gap:12px;max-width:900px}
+.cards2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:700px){.cards2{grid-template-columns:1fr}}
+.pop{animation:pop .45s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.callcard{border-radius:6px;padding:16px 14px;text-align:center;font-weight:800;font-size:clamp(1.05rem,1.9vw,1.3rem);line-height:1.3;text-wrap:balance}
 .callcard.men{background:var(--gold);color:var(--gold-ink)}
 .callcard.women{background:var(--chalk);color:var(--turf)}
 .fullteam{border:3px solid var(--gold);border-radius:6px;padding:16px;text-align:center;color:var(--gold);font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(1.6rem,3vw,2.1rem);line-height:1.1;letter-spacing:.02em}
-.huddle.plays{grid-template-columns:1fr;gap:14px}
-.huddle.plays b{font-size:1.4rem}
 .statwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
 @media (max-width:760px){.statwrap{grid-template-columns:1fr}}
 .bignum{font-family:var(--display);font-weight:800;font-size:clamp(5rem,14vw,8.5rem);line-height:.85;color:var(--gold)}
@@ -183,7 +187,7 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 [hidden]{display:none!important}
 .fade{animation:fade .35s ease both}
 @keyframes fade{from{opacity:.35;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fade{animation:none}.hold.pressing i{transition:none}.play{transition:none}}
+@media (prefers-reduced-motion:reduce){.fade,.pop{animation:none}.hold.pressing i{transition:none}.play{transition:none}}
 </style>
 </head>
 <body>
@@ -376,46 +380,49 @@ function render(){
     $("#ready").onclick = () => go(screen === "pass1" ? "r1" : "r2");
   }
   else if (screen === "stat") {
-    el.innerHTML = `<section class="stack fade">
+    const revealed = game.players.every(p => p.gut);
+    const buttons = GUT.choices.map(c => {
+      let cls = "";
+      if (revealed) cls = c.id === GUT.correct ? "right" : (game.players.some(p => p.gut === c.id) ? "wrong" : "");
+      return `<button data-g="${c.id}" class="${cls}" ${revealed ? "disabled" : ""}>${c.label}</button>`;
+    }).join("");
+    let verdict = "";
+    if (revealed) verdict = group()
+      ? `<div class="results"><span class="small" style="align-self:center">It's women.</span>${game.players.map((p, j) => `<span class="chip ${p.gut === GUT.correct ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)} ${p.gut === GUT.correct ? "✓" : "✗"}</span>`).join("")}</div>`
+      : `<p class="small">${game.players[0].gut === GUT.correct ? "You got it ✓ It's women." : "It's women."}</p>`;
+    el.innerHTML = `<section class="stack ${revealed ? "" : "fade"}" style="gap:18px">
       <span class="eyebrow">Huddle · Gut check</span>
       <h2>Everyone needs support.</h2>
-      ${turnBanner("gut", "your gut check")}
+      ${revealed ? "" : turnBanner("gut", "your gut check")}
       <p class="scenario">Who's more likely to turn to a <b>friend</b> for emotional support?</p>
-      <div class="guess gut">${GUT.choices.map(c => `<button data-g="${c.id}">${c.label}</button>`).join("")}</div></section>`;
+      <div class="guess gut">${buttons}</div>
+      ${revealed ? `${verdict}
+      <div class="reveal pop">
+        <div class="cards2">
+          <div class="callcard men">38% of men would lean on a friend.<br>Only 16% would talk to a counselor.</div>
+          <div class="callcard women">54% of women would lean on a friend.<br>Only 22% would talk to a counselor.</div>
+        </div>
+        <div class="fullteam">A full team has <u>both</u>: friends and a counselor.</div>
+        <p class="small" style="text-align:center">Pew Research Center survey of U.S. adults, Sept. 2024.</p>
+      </div>
+      <div class="row"><button class="btn" id="next">Get the play call</button></div>` : ""}</section>`;
+    if (revealed) { $("#next").onclick = () => go("huddle"); return; }
     el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => {
       const i = game.turn;
       game.players[i].gut = b.dataset.g;
       if (group() && i < game.size - 1) { game.turn++; toast(`${pname(i)} locked in`); render(); bumpIdle(); return; }
       game.turn = 0;
-      go("huddle");
+      render(); bumpIdle();
     });
   }
   else if (screen === "huddle") {
-    const gutLine = group()
-      ? `<div class="results"><span class="small" style="align-self:center">Gut check: women.</span>${game.players.map((p, j) => `<span class="chip ${p.gut === GUT.correct ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)} ${p.gut === GUT.correct ? "✓" : "✗"}</span>`).join("")}</div>`
-      : `<p class="small">Gut check: women. ${game.players[0].gut === GUT.correct ? "You got it ✓" : `You said ${esc(gutLabel(game.players[0].gut).toLowerCase())}.`}</p>`;
-    el.innerHTML = `<section class="stack fade" style="gap:22px">
-      <div class="stack" style="gap:8px">
-        <span class="eyebrow">Huddle · Check the score</span>
-        <h2>Have you built your whole team?</h2>
-        <p class="scenario" style="font-size:1.2rem">Quick breather before the next play.</p>
-        ${gutLine}
-      </div>
-      <div class="hud">
-        <div class="stack" style="gap:12px">
-          <div class="callcard men">38% of men would lean on a friend.<br>Only 16% would talk to a counselor.</div>
-          <div class="callcard women">54% of women would lean on a friend.<br>Only 22% would talk to a counselor.</div>
-          <div class="fullteam">A full team has <u>both</u>:<br>friends and a counselor.</div>
-          <p class="small" style="text-align:center">Pew Research Center survey of U.S. adults, Sept. 2024.</p>
-        </div>
-        <div class="stack" style="gap:12px">
-          <span class="eyebrow">Huddle · Get the play call</span>
-          <div class="huddle plays">
-            <div><b>It doesn't always look sad</b><span>Struggling can look like irritability, pulling away, or partying harder, especially for men.</span></div>
-            <div><b>Ask directly</b><span>A real “Are you actually okay?” doesn't make things worse. It opens the door.</span></div>
-            <div><b>Pass the ball</b><span>You're the friend on their team. Help them add the counselor: ${esc(cfg.where)}.</span></div>
-          </div>
-        </div>
+    el.innerHTML = `<section class="stack fade" style="gap:26px">
+      <span class="eyebrow">Huddle · Get the play call</span>
+      <h2>Here's the play call</h2>
+      <div class="huddle">
+        <div><b>It doesn't always look sad</b><span>Struggling can look like irritability, pulling away, or partying harder, especially for men.</span></div>
+        <div><b>Ask directly</b><span>A real “Are you actually okay?” doesn't make things worse. It opens the door.</span></div>
+        <div><b>Pass the ball</b><span>You're the friend on their team. Help them add the counselor: ${esc(cfg.where)}.</span></div>
       </div>
       <div class="row"><button class="btn" id="next">Ready for play 2</button></div></section>`;
     $("#next").onclick = () => go("r2");

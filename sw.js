@@ -1,7 +1,7 @@
 // Keeps the game working with no internet, while always loading the newest
 // game when the iPad is online.
 // Change VERSION whenever you update the files so iPads refresh their offline copy.
-const VERSION = "takes-a-team-v6";
+const VERSION = "takes-a-team-v7";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
