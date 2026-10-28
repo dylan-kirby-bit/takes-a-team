@@ -1,12 +1,16 @@
 // Keeps the game working with no internet, while always loading the newest
 // game when the iPad is online.
 // Change VERSION whenever you update the files so iPads refresh their offline copy.
-const VERSION = "takes-a-team-v7";
+const VERSION = "takes-a-team-v8";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
+const OPTIONAL = ["./qr-iphone.png", "./qr-android.png"];  // saved for offline if they exist
 
 self.addEventListener("install", e => {
   // cache: "reload" skips the browser's own cache, so a fresh copy is saved
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, { cache: "reload" })))));
+  e.waitUntil(caches.open(VERSION).then(c => Promise.all([
+    c.addAll(FILES.map(u => new Request(u, { cache: "reload" }))),
+    ...OPTIONAL.map(u => c.add(new Request(u, { cache: "reload" })).catch(() => {}))
+  ])));
   self.skipWaiting();
 });
 
@@ -33,8 +37,13 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Icons and other files: saved copy first.
+  // Icons, QR images and other files: newest copy when online (and save it), saved copy offline.
   e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req))
+    fetch(req, { cache: "no-store" })
+      .then(res => {
+        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+        return res;
+      })
+      .catch(() => caches.match(req, { ignoreSearch: true }))
   );
 });

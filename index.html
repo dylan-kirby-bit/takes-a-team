@@ -206,7 +206,9 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 /* All results stay in this browser's storage on this device. The page sends nothing anywhere. */
 const KEY_PLAYS = "takesATeam.plays.v2", KEY_CFG = "takesATeam.config.v1";
 const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor University Counseling Center", qrIos: "", qrAndroid: "", lastExport: "" };
-const QRS = [ { key: "qrIos", label: "iPhone" }, { key: "qrAndroid", label: "Android" } ];
+/* QR images: built-in files on GitHub show on every device. An image uploaded on the Staff screen overrides it on that device only. */
+const QRS = [ { key: "qrIos", label: "iPhone", file: "qr-iphone.png" }, { key: "qrAndroid", label: "Android", file: "qr-android.png" } ];
+const qrSrc = q => cfg[q.key] || q.file;
 const IDLE_MS = 120000;   // an abandoned game returns to the start screen after 2 minutes
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
@@ -478,7 +480,7 @@ function render(){
           <p class="crisis">In a crisis anytime: <b>call or text 988</b>.</p>
         </div>
         <div class="qrs">${QRS.map(q => `<figure>
-          <div class="qr ${cfg[q.key] ? "" : "empty"}">${cfg[q.key] ? `<img src="${esc(cfg[q.key])}" alt="${q.label} QR code that saves the Counseling Center contacts">` : `${q.label} code on the table`}</div>
+          <div class="qr"><img src="${esc(qrSrc(q))}" alt="${q.label} QR code that saves the Counseling Center contacts" onerror="this.parentNode.classList.add('empty');this.replaceWith('${q.label} code on the table')"></div>
           <figcaption>${q.label}</figcaption></figure>`).join("")}</div>
       </div>
       <div class="staffbar"><span class="lbl">Staff: ${group() ? "who saved the contact?" : "contact saved?"}</span>
@@ -620,7 +622,8 @@ function renderStaff(el){
         <div class="field"><label for="evName">Event name (results are grouped by this)</label><input type="text" id="evName" value="${esc(cfg.event)}"></div>
         <div class="field"><label for="where">Huddle point 3 ends with “connect them to …”</label><input type="text" id="where" value="${esc(cfg.where)}"></div>
         <div class="row"><button class="btn small" id="saveCfg">Save setup</button></div>
-        ${QRS.map(q => `<div class="field"><label for="file-${q.key}">${q.label} vCard QR image ${cfg[q.key] ? "(added)" : "(not added yet)"}</label>
+        <p class="muted" style="margin:0">The QR codes come from the game's files on GitHub (qr-iphone.png and qr-android.png), so every device shows them. Upload here only to override them on this device.</p>
+        ${QRS.map(q => `<div class="field"><label for="file-${q.key}">${q.label} vCard QR image ${cfg[q.key] ? "(this device's override)" : "(using the GitHub file)"}</label>
           <input type="file" id="file-${q.key}" data-qr="${q.key}" accept="image/*"></div>
         ${cfg[q.key] ? `<div class="row"><img src="${esc(cfg[q.key])}" alt="Current ${q.label} QR image" style="width:90px;height:90px;background:#fff;border-radius:4px;padding:4px"><button class="btn small ghost" data-rmqr="${q.key}">Remove ${q.label} QR</button></div>` : ""}`).join("")}
       </div></div>
