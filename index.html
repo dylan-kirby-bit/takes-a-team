@@ -209,6 +209,15 @@ const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor Univer
 /* QR images: built-in files on GitHub show on every device. An image uploaded on the Staff screen overrides it on that device only. */
 const QRS = [ { key: "qrIos", label: "iPhone", file: "qr-iphone.png" }, { key: "qrAndroid", label: "Android", file: "qr-android.png" } ];
 const qrSrc = q => cfg[q.key] || q.file;
+/* Accept the QR files as .png, .jpg or .jpeg; show a placeholder if none exist. */
+window.qrFallback = img => {
+  const src = img.getAttribute("src"), order = [".png", ".jpg", ".jpeg"];
+  const m = /^(qr-(?:iphone|android))(\.png|\.jpg|\.jpeg)$/.exec(src);
+  const next = m && order[order.indexOf(m[2]) + 1];
+  if (next) { img.src = m[1] + next; return; }
+  img.parentNode.classList.add("empty");
+  img.replaceWith(`${img.dataset.label} code on the table`);
+};
 const IDLE_MS = 120000;   // an abandoned game returns to the start screen after 2 minutes
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
@@ -480,7 +489,7 @@ function render(){
           <p class="crisis">In a crisis anytime: <b>call or text 988</b>.</p>
         </div>
         <div class="qrs">${QRS.map(q => `<figure>
-          <div class="qr"><img src="${esc(qrSrc(q))}" alt="${q.label} QR code that saves the Counseling Center contacts" onerror="this.parentNode.classList.add('empty');this.replaceWith('${q.label} code on the table')"></div>
+          <div class="qr"><img src="${esc(qrSrc(q))}" alt="${q.label} QR code that saves the Counseling Center contacts" data-label="${q.label}" onerror="qrFallback(this)"></div>
           <figcaption>${q.label}</figcaption></figure>`).join("")}</div>
       </div>
       <div class="staffbar"><span class="lbl">Staff: ${group() ? "who saved the contact?" : "contact saved?"}</span>
