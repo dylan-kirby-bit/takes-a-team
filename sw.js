@@ -1,7 +1,7 @@
 // Keeps the game working with no internet, while always loading the newest
 // game when the iPad is online.
 // Change VERSION whenever you update the files so iPads refresh their offline copy.
-const VERSION = "takes-a-team-v12";
+const VERSION = "takes-a-team-v13";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 // QR images, saved for offline if they exist (PNG or JPEG)
 const OPTIONAL = ["png", "jpg", "jpeg"].flatMap(x => [`./qr-iphone.${x}`, `./qr-android.${x}`]);

@@ -184,12 +184,7 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 .notice{border:1.5px solid var(--miss);padding:10px 14px;border-radius:4px;font-size:.95rem}
 .okline{border-left:3px solid var(--good);padding-left:12px;font-size:.95rem;color:var(--chalk-dim)}
 .muted{color:var(--chalk-dim)}
-#sendPanel{position:fixed;inset:0;z-index:6;background:rgba(9,32,23,.92);display:flex;align-items:center;justify-content:center;padding:20px}
-#sendPanel .box{background:var(--turf);border:2px solid var(--gold);border-radius:8px;width:min(720px,100%);max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
-#sendPanel .status{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:1.6rem;line-height:1.1}
-#sendPanel .status.ok{color:var(--good)} #sendPanel .status.err{color:var(--miss)}
-#sendPanel iframe{width:100%;height:260px;border:0;border-radius:6px;background:#fff}
-#sendPanel .bar{height:10px;background:var(--turf-2);border-radius:5px;overflow:hidden} #sendPanel .bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .3s}
+#sendFrame{position:fixed;left:-2000px;top:0;width:400px;height:300px;border:0;opacity:0;pointer-events:none}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--chalk);color:var(--turf);padding:10px 18px;border-radius:4px;font-weight:600;z-index:5;max-width:calc(100% - 40px)}
 [hidden]{display:none!important}
 .fade{animation:fade .35s ease both}
@@ -205,14 +200,7 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
   </header>
   <main id="screen" aria-live="polite"></main>
 </div>
-<div id="sendPanel" hidden><div class="box">
-  <span class="eyebrow">Staff · Send results</span>
-  <div class="status" id="sendStatus">Sending…</div>
-  <div class="bar"><i id="sendBar"></i></div>
-  <p class="small" id="sendHint">Keep this screen open. It only takes a few seconds.</p>
-  <iframe id="sendFrame" title="Qualtrics results drop"></iframe>
-  <div class="row" id="sendActions"></div>
-</div></div>
+<iframe id="sendFrame" title="Sending results" aria-hidden="true" tabindex="-1"></iframe>
 <div id="toast" hidden></div>
 
 <script>
@@ -237,7 +225,6 @@ const IDLE_MS = 120000;   // an abandoned game returns to the start screen after
 /* Results drop: the anonymous link to the small Qualtrics survey that receives results.
    Paste the link between the quotes. Leave it empty to hide the Send button. */
 const DROP_URL = "https://baylor.qualtrics.com/jfe/form/SV_9MN2kIaTNM6EpdY";
-const BATCH_ROWS = 30;    // rows per send; keeps each link short enough for every browser
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeKey(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -521,6 +508,7 @@ function render(){
       <button class="btn" id="next">Next player</button></section>`;
     $("#next").onclick = () => { game = null; go("start"); };
     homeTimer = setTimeout(() => { game = null; go("start"); }, 8000);
+    setTimeout(pumpSend, 500);   // send this game to Qualtrics in the background
   }
   else if (screen === "staff") renderStaff(el);
 }
@@ -585,76 +573,60 @@ function toTSV(rows){
   return [COLS.join("\t"), ...rowValues(rows).map(r => r.map(v => v.replace(/[\t\n]/g, " ")).join("\t"))].join("\n");
 }
 /* ---------- send to Qualtrics ----------
-   Each send opens the results-drop survey inside the game with up to BATCH_ROWS rows in the link.
-   The survey submits itself (or staff tap its arrow), then redirects to sent.html, which tells the game. */
-const USEFUL_CODE = { learned_will_use: "learn_use", learned_wont_use: "learn_nouse", good_reminder: "reminder", nothing_new: "nothing" };
-const pad2 = n => String(n).padStart(2, "0");
-function encodeRow(p){
-  const d = new Date(p.at);
-  const when = `${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
-  return [when, String(p.gameId).slice(-5), p.groupSize, p.preChoice || "", p.gutCheck || "",
-    p.postChoice || "", USEFUL_CODE[p.useful] || "", p.savedCount ?? ""].join(".");
+   Each finished game is sent on its own, in the background, as one Qualtrics response with
+   plain-language fields. A hidden frame opens the results-drop survey with the game in the link;
+   the survey submits itself and redirects to sent.html (on this same site), which tells the game it landed.
+   Games played offline wait and go out automatically once the iPad is back online. */
+const SEND_TIMEOUT_MS = 25000;
+const choiceTitle = (round, id) => (round.options.find(o => o.id === id) || {}).title || "";
+const resultWord = (pick, ok) => pick ? (ok ? "Correct" : "Missed") : "";
+function qualtricsFields(p){
+  const usefulText = (USEFUL.find(u => u.id === p.useful) || {}).text || "";
+  const saved = p.savedCount === null || p.savedCount === undefined ? "" : String(p.savedCount);
+  return {
+    Event: p.event,
+    Played: fmtDate(p.at),
+    Game: String(p.gameId).slice(-6),
+    Group_size: p.groupSize >= 5 ? "5+" : String(p.groupSize),
+    Play1_pick: choiceTitle(ROUND1, p.preChoice),
+    Play1_result: resultWord(p.preChoice, p.pre),
+    Gut_check: gutLabel(p.gutCheck),
+    Gut_result: resultWord(p.gutCheck, p.gutCorrect),
+    Play2_pick: choiceTitle(ROUND2, p.postChoice),
+    Play2_result: resultWord(p.postChoice, p.post),
+    Useful: usefulText,
+    Saved_contact: saved
+  };
 }
-function buildBatches(){
-  const unsent = plays.filter(p => !p.sent).slice().reverse();   // oldest first
-  const byEvent = {};
-  unsent.forEach(p => { (byEvent[p.event] = byEvent[p.event] || []).push(p); });
-  const batches = [];
-  Object.entries(byEvent).forEach(([ev, rows]) => {
-    for (let i = 0; i < rows.length; i += BATCH_ROWS) batches.push({ ev, rows: rows.slice(i, i + BATCH_ROWS) });
-  });
-  return batches;
+let pumping = null, pumpWait = null;
+const inProgress = p => game && game.rowIds && game.rowIds.includes(p.id) && screen !== "thanks" && screen !== "start";
+const unsentRows = () => plays.filter(p => !p.sent && !inProgress(p)).slice().reverse();   // oldest first
+function pumpSend(){
+  if (!DROP_URL || pumping || !navigator.onLine) return;
+  const next = unsentRows()[0];
+  if (!next) return;
+  const f = $("#sendFrame");
+  pumping = { id: next.id, timer: null };
+  const done = ok => {
+    if (!pumping) return;
+    clearTimeout(pumping.timer); f.onload = null; f.src = "about:blank";
+    if (ok) { const r = plays.find(x => x.id === pumping.id); if (r) { r.sent = true; savePlays(); } cfg.lastExport = new Date().toISOString(); saveCfg(); }
+    pumping = null;
+    if (screen === "staff") render();
+    if (ok) setTimeout(pumpSend, 300);
+    else { clearTimeout(pumpWait); pumpWait = setTimeout(pumpSend, 60000); }   // try again in a minute
+  };
+  f.onload = () => {
+    let path = "";
+    try { path = f.contentWindow.location.pathname; } catch (e) { return; }   // still on Qualtrics
+    if (/sent\.html$/.test(path)) done(true);
+  };
+  pumping.timer = setTimeout(() => done(false), SEND_TIMEOUT_MS);
+  const q = new URLSearchParams(qualtricsFields(next));
+  f.src = DROP_URL + (DROP_URL.includes("?") ? "&" : "?") + q.toString();
 }
-let sending = null;
-function sendResults(){
-  const batches = buildBatches();
-  if (!batches.length) { toast("Everything is already sent"); return; }
-  sending = { batches, i: 0, id: newId(), timer: null };
-  $("#sendPanel").hidden = false; $("#sendFrame").hidden = false;
-  sendNext();
-}
-function sendNext(){
-  const s = sending, b = s.batches[s.i];
-  const total = s.batches.reduce((n, x) => n + x.rows.length, 0);
-  const done = s.batches.slice(0, s.i).reduce((n, x) => n + x.rows.length, 0);
-  $("#sendStatus").className = "status"; $("#sendStatus").textContent = s.batches.length > 1 ? `Sending part ${s.i + 1} of ${s.batches.length}…` : "Sending…";
-  $("#sendBar").style.width = `${Math.round(done / total * 100)}%`;
-  $("#sendHint").textContent = "Keep this screen open. It only takes a few seconds.";
-  $("#sendActions").innerHTML = `<button class="btn small ghost" id="sendCancel">Cancel</button>`;
-  $("#sendCancel").onclick = closeSend;
-  const yr = new Date(b.rows[0].at).getFullYear();
-  const q = new URLSearchParams({ ev: b.ev, yr, send: s.id, b: s.i + 1, n: s.batches.length, rows: b.rows.map(encodeRow).join("~") });
-  $("#sendFrame").src = DROP_URL + (DROP_URL.includes("?") ? "&" : "?") + q.toString();
-  clearTimeout(s.timer);
-  s.timer = setTimeout(() => {   // the survey didn't submit by itself: ask staff to tap its arrow
-    $("#sendHint").innerHTML = "Tap the <b>arrow</b> in the Qualtrics box below to finish sending. If the box is blank, use <b>Copy results</b> instead.";
-  }, 8000);
-}
-window.addEventListener("message", e => {
-  const m = e.data;
-  if (!sending || !m || m.type !== "tt-sent" || String(m.send) !== String(sending.id) || Number(m.b) !== sending.i + 1) return;
-  const s = sending;
-  clearTimeout(s.timer);
-  const ids = new Set(s.batches[s.i].rows.map(r => r.id));
-  plays.forEach(p => { if (ids.has(p.id)) p.sent = true; });
-  savePlays();
-  s.i++;
-  if (s.i < s.batches.length) { sendNext(); return; }
-  const total = s.batches.reduce((n, x) => n + x.rows.length, 0);
-  cfg.lastExport = new Date().toISOString(); saveCfg();
-  $("#sendFrame").src = "about:blank"; $("#sendFrame").hidden = true;
-  $("#sendBar").style.width = "100%";
-  $("#sendStatus").className = "status ok"; $("#sendStatus").textContent = `Sent ✓ ${total} game${total === 1 ? "" : "s"}`;
-  $("#sendHint").textContent = "Results are safe in Qualtrics. Erase them from this iPad to start fresh for the next event.";
-  $("#sendActions").innerHTML = `<button class="btn small" id="sendErase">Erase results from this iPad</button><button class="btn small ghost" id="sendDone">Done</button>`;
-  $("#sendErase").onclick = () => { plays = plays.filter(p => !p.sent); savePlays(); closeSend(); toast("Results erased. Ready for the next event."); };
-  $("#sendDone").onclick = closeSend;
-});
-function closeSend(){
-  if (sending) clearTimeout(sending.timer);
-  sending = null; $("#sendFrame").src = "about:blank"; $("#sendPanel").hidden = true;
-  if (screen === "staff") render();
-}
+window.addEventListener("online", () => setTimeout(pumpSend, 1000));
+setInterval(pumpSend, 60000);
 async function copyResults(){
   const text = toTSV(plays);
   const box = $("#csvBox");
@@ -704,8 +676,10 @@ function renderStaff(el){
     </div>
     ${!storageOK ? `<div class="notice">This browser is blocking storage (often Private Browsing). Plays will be lost when the page closes. Turn off Private Browsing and reopen the game.</div>` : ""}
     ${plays.length ? `<div class="${unexported ? "notice" : "okline"}">${unexported
-      ? `${unexported} game${unexported === 1 ? "" : "s"} not ${DROP_URL ? "sent" : "exported"} yet. ${DROP_URL ? "Send" : "Export"} after every event so nothing is lost if the iPad's browser data is cleared.`
-      : `All plays ${DROP_URL ? "sent" : "exported"}${cfg.lastExport ? " · last " + (DROP_URL ? "send" : "export") + " " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
+      ? DROP_URL
+        ? `${unexported} game${unexported === 1 ? "" : "s"} waiting to send to Qualtrics. ${navigator.onLine ? (pumping ? "Sending now…" : "They'll go out on their own in a moment, or tap Send now.") : "This iPad is offline. They'll send automatically once it's back on Wi-Fi."}`
+        : `${unexported} game${unexported === 1 ? "" : "s"} not exported yet. Export after every event so nothing is lost if the iPad's browser data is cleared.`
+      : `${DROP_URL ? `All ${plays.length} game${plays.length === 1 ? "" : "s"} sent to Qualtrics ✓` : "All plays exported"}${cfg.lastExport ? " · last " + (DROP_URL ? "send" : "export") + " " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
     ${s.n ? `
     <div class="stats">
       <div class="stat"><div class="n">${s.n}</div><div class="l">Students reached · ${s.games} game${s.games === 1 ? "" : "s"}, ${pct(s.friends, s.n)}% with friends</div></div>
@@ -726,14 +700,14 @@ function renderStaff(el){
     : `<p class="scenario muted">No plays yet for this event. Each finished game adds one row: the group size, the team's picks before and after the huddle, the gut check, how useful it was, and how many saved the contact.</p>`}
     <div class="sec"><h3>Results</h3>
       <div class="row">
-        ${DROP_URL ? `<button class="btn small" id="sendRes" ${plays.some(p => !p.sent) ? "" : "disabled"}>Send results to Qualtrics</button>` : ""}
+        ${DROP_URL && unexported ? `<button class="btn small" id="sendRes">Send now</button>` : ""}
         <button class="btn small ${DROP_URL ? "ghost" : ""}" id="copyRes" ${plays.length ? "" : "disabled"}>Copy results${DROP_URL ? " (backup)" : " for Qualtrics"}</button>
         <button class="btn small ghost" id="export" ${plays.length ? "" : "disabled"}>Export CSV file</button>
         <button class="btn small ghost" id="undo" ${rows.length ? "" : "disabled"}>${confirm === "undo" ? "Tap again to delete last game" : "Undo last game"}</button>
-        <button class="btn small warn" id="clear" ${plays.length ? "" : "disabled"}>${confirm === "clear" ? "Tap again to erase all results" : "Erase all results"}</button>
+        <button class="btn small warn" id="clear" ${plays.length ? "" : "disabled"}>${confirm === "clear" ? (DROP_URL && unexported ? `${unexported} not sent yet · tap again to erase anyway` : "Tap again to erase all results") : "Erase all results"}</button>
       </div>
       <p class="muted" style="margin:10px 0 0">${DROP_URL
-        ? `After the event: tap <b>Send results to Qualtrics</b>, wait for <b>Sent ✓</b>, then tap <b>Erase</b>. Needs Wi-Fi.`
+        ? `Each game sends itself to Qualtrics when it ends (one response per game). After the event, once this page says <b>all games sent ✓</b>, tap <b>Erase all results</b>.`
         : `After the event: tap <b>Copy results for Qualtrics</b>, open the Qualtrics icon, type <b>0</b> in "How many are playing?", paste, and submit. Then come back and erase.`}</p>
       <textarea class="csv" id="csvBox" readonly hidden>${esc(toCSV(plays))}</textarea>
     </div>
@@ -756,7 +730,7 @@ function renderStaff(el){
   $("#back").onclick = () => { confirm = ""; go("start"); };
   $("#export").onclick = exportCSV;
   $("#copyRes").onclick = copyResults;
-  if ($("#sendRes")) $("#sendRes").onclick = sendResults;
+  if ($("#sendRes")) $("#sendRes").onclick = () => { clearTimeout(pumpWait); pumpSend(); toast(navigator.onLine ? "Sending…" : "This iPad is offline"); setTimeout(render, 400); };
   $("#undo").onclick = () => {
     if (confirm !== "undo") { confirm = "undo"; render(); return; }
     confirm = ""; const last = rows[0];
@@ -792,6 +766,7 @@ function renderStaff(el){
 
 /* ---------- boot ---------- */
 go("start");
+setTimeout(pumpSend, 2000);   // send anything left over from last time
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 if ("serviceWorker" in navigator && window.isSecureContext && location.protocol !== "file:") {
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
