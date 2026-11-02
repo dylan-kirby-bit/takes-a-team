@@ -76,6 +76,7 @@ h2{font-size:clamp(2rem,5vw,3.1rem)}
 .start svg{width:100%;max-height:340px;color:var(--chalk)}
 .count{display:flex;gap:12px;flex-wrap:wrap}
 .count .btn{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:150px}
+.sizes .btn{min-width:92px;font-size:2rem;padding:18px 0}
 .count .btn small{font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:600;font-size:.85rem;opacity:.85}
 /* turn banner for group play */
 .turn{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:2px solid var(--pc);border-radius:6px;padding:12px 16px;background:var(--turf-2)}
@@ -183,6 +184,12 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
 .notice{border:1.5px solid var(--miss);padding:10px 14px;border-radius:4px;font-size:.95rem}
 .okline{border-left:3px solid var(--good);padding-left:12px;font-size:.95rem;color:var(--chalk-dim)}
 .muted{color:var(--chalk-dim)}
+#sendPanel{position:fixed;inset:0;z-index:6;background:rgba(9,32,23,.92);display:flex;align-items:center;justify-content:center;padding:20px}
+#sendPanel .box{background:var(--turf);border:2px solid var(--gold);border-radius:8px;width:min(720px,100%);max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+#sendPanel .status{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:1.6rem;line-height:1.1}
+#sendPanel .status.ok{color:var(--good)} #sendPanel .status.err{color:var(--miss)}
+#sendPanel iframe{width:100%;height:260px;border:0;border-radius:6px;background:#fff}
+#sendPanel .bar{height:10px;background:var(--turf-2);border-radius:5px;overflow:hidden} #sendPanel .bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .3s}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--chalk);color:var(--turf);padding:10px 18px;border-radius:4px;font-weight:600;z-index:5;max-width:calc(100% - 40px)}
 [hidden]{display:none!important}
 .fade{animation:fade .35s ease both}
@@ -198,13 +205,21 @@ th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;colo
   </header>
   <main id="screen" aria-live="polite"></main>
 </div>
+<div id="sendPanel" hidden><div class="box">
+  <span class="eyebrow">Staff · Send results</span>
+  <div class="status" id="sendStatus">Sending…</div>
+  <div class="bar"><i id="sendBar"></i></div>
+  <p class="small" id="sendHint">Keep this screen open. It only takes a few seconds.</p>
+  <iframe id="sendFrame" title="Qualtrics results drop"></iframe>
+  <div class="row" id="sendActions"></div>
+</div></div>
 <div id="toast" hidden></div>
 
 <script>
 (() => {
 "use strict";
 /* All results stay in this browser's storage on this device. The page sends nothing anywhere. */
-const KEY_PLAYS = "takesATeam.plays.v2", KEY_CFG = "takesATeam.config.v1";
+const KEY_PLAYS = "takesATeam.plays.v3", KEY_CFG = "takesATeam.config.v1";
 const DEFAULTS = { event: "Men's Mental Health Month", where: "the Baylor University Counseling Center", qrIos: "", qrAndroid: "", lastExport: "" };
 /* QR images: built-in files on GitHub show on every device. An image uploaded on the Staff screen overrides it on that device only. */
 const QRS = [ { key: "qrIos", label: "iPhone", file: "qr-iphone.png" }, { key: "qrAndroid", label: "Android", file: "qr-android.png" } ];
@@ -219,6 +234,10 @@ window.qrFallback = img => {
   img.replaceWith(`${img.dataset.label} code on the table`);
 };
 const IDLE_MS = 120000;   // an abandoned game returns to the start screen after 2 minutes
+/* Results drop: the anonymous link to the small Qualtrics survey that receives results.
+   Paste the link between the quotes. Leave it empty to hide the Send button. */
+const DROP_URL = "https://baylor.qualtrics.com/jfe/form/SV_9MN2kIaTNM6EpdY";
+const BATCH_ROWS = 30;    // rows per send; keeps each link short enough for every browser
 
 function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
 function writeKey(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -306,16 +325,13 @@ document.addEventListener("pointerdown", bumpIdle, { passive: true });
 
 function newGame(size){
   game = { id: newId(), size, turn: 0, rowIds: [],
-    players: Array.from({ length: size }, () => ({ pre: null, gut: null, post: null, useful: null, saved: null })),
+    players: [{ pre: null, gut: null, post: null, useful: null, savedCount: null }],   // one shared answer per game
     order: { r1: shuffle(ROUND1.options), r2: shuffle(ROUND2.options) } };
 }
 
-function turnBanner(field, verb){
+function turnBanner(){
   if (!group()) return "";
-  const i = game.turn;
-  return `<div class="turn" style="--pc:${PCOLORS[i]}"><b>${pname(i)}, ${verb}</b>
-    <div class="chips">${game.players.map((p, j) =>
-      `<span class="chip ${p[field] ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)}${p[field] ? " ✓" : ""}</span>`).join("")}</div></div>`;
+  return `<div class="turn" style="--pc:var(--gold)"><b>Team of ${game.size}</b><span class="small">Talk it over, then pick together.</span></div>`;
 }
 
 function cardsHTML(round, reveal){
@@ -326,7 +342,7 @@ function cardsHTML(round, reveal){
     if (reveal) {
       const who = game.players.map((p, j) => p[field] === o.id ? j : -1).filter(j => j >= 0);
       cls = o.id === R.correct ? "right" : (who.length ? "wrong" : "");
-      if (group() && who.length) pickers = `<span class="pickers">${who.map(j => `<i style="--pc:${PCOLORS[j]}">${pname(j)}</i>`).join("")}</span>`;
+      if (game.players.length > 1 && who.length) pickers = `<span class="pickers">${who.map(j => `<i style="--pc:${PCOLORS[j]}">${pname(j)}</i>`).join("")}</span>`;
     }
     return `<button class="play ${cls}" data-pick="${o.id}" ${reveal ? "disabled" : ""}>
       <span class="tag">${"ABC"[i]} · Play call</span>${diagram(o.d)}
@@ -337,7 +353,7 @@ function cardsHTML(round, reveal){
 /* Record a pick for the current player, then hand off or move on. */
 function pick(field, value, passScreen, nextScreen, after){
   game.players[game.turn][field] = value;
-  if (group() && game.turn < game.size - 1) { game.turn++; go(passScreen); return; }
+  if (game.turn < game.players.length - 1) { game.turn++; go(passScreen); return; }
   game.turn = 0;
   if (after) after();
   go(nextScreen);
@@ -351,11 +367,12 @@ function render(){
       <div class="stack" style="gap:20px">
         <span class="eyebrow">${esc(cfg.event)}</span>
         <h1>Want to make <em>the team?</em></h1>
-        <p class="scenario">A few quick plays and you get a prize. Play solo or with up to two friends.</p>
-        <div class="count">
-          <button class="btn" data-size="1">Play solo<small>1 player</small></button>
-          <button class="btn ghost" data-size="2">With a friend<small>2 players</small></button>
-          <button class="btn ghost" data-size="3">With two friends<small>3 players</small></button>
+        <p class="scenario">A few quick plays and you get a prize. Play solo or as a team.</p>
+        <div class="stack" style="gap:10px">
+          <span class="eyebrow" style="color:var(--chalk)">How many are playing?</span>
+          <div class="count sizes">
+            ${[1, 2, 3, 4, 5].map(n => `<button class="btn ${n === 1 ? "" : "ghost"}" data-size="${n}">${n === 5 ? "5+" : n}</button>`).join("")}
+          </div>
         </div>
       </div>
       <svg viewBox="0 0 300 260" aria-hidden="true">
@@ -375,10 +392,10 @@ function render(){
   else if (screen === "r1") {
     el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Play 1</span>
-      ${turnBanner("pre", "pick your play")}
+      ${turnBanner()}
       <p class="scenario">${ROUND1.scenario}</p>
       <h2>What's your play?</h2>${cardsHTML("r1", false)}
-      ${group() ? `<p class="small">Everyone else, no peeking. Picks stay secret until the end.</p>` : ""}</section>`;
+</section>`;
     el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick("pre", b.dataset.pick, "pass1", "stat"));
   }
   else if (screen === "pass1" || screen === "pass2") {
@@ -398,13 +415,11 @@ function render(){
       return `<button data-g="${c.id}" class="${cls}" ${revealed ? "disabled" : ""}>${c.label}</button>`;
     }).join("");
     let verdict = "";
-    if (revealed) verdict = group()
-      ? `<div class="results"><span class="small" style="align-self:center">It's women.</span>${game.players.map((p, j) => `<span class="chip ${p.gut === GUT.correct ? "done" : ""}" style="--pc:${PCOLORS[j]}">${pname(j)} ${p.gut === GUT.correct ? "✓" : "✗"}</span>`).join("")}</div>`
-      : `<p class="small">${game.players[0].gut === GUT.correct ? "You got it ✓ It's women." : "It's women."}</p>`;
+    if (revealed) verdict = `<p class="small">${game.players[0].gut === GUT.correct ? `${group() ? "Your team got" : "You got"} it ✓ It's women.` : "It's women."}</p>`;
     el.innerHTML = `<section class="stack ${revealed ? "" : "fade"}" style="gap:18px">
       <span class="eyebrow">Huddle · Gut check</span>
       <h2>Everyone needs support.</h2>
-      ${revealed ? "" : turnBanner("gut", "your gut check")}
+      ${revealed ? "" : turnBanner()}
       <p class="scenario">Who's more likely to turn to a <b>friend</b> for emotional support?</p>
       <div class="guess gut">${buttons}</div>
       ${revealed ? `${verdict}
@@ -421,7 +436,6 @@ function render(){
     el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => {
       const i = game.turn;
       game.players[i].gut = b.dataset.g;
-      if (group() && i < game.size - 1) { game.turn++; toast(`${pname(i)} locked in`); render(); bumpIdle(); return; }
       game.turn = 0;
       render(); bumpIdle();
     });
@@ -441,17 +455,17 @@ function render(){
   else if (screen === "r2") {
     el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Play 2</span>
-      ${turnBanner("post", "pick your play")}
+      ${turnBanner()}
       <p class="scenario">${ROUND2.scenario}</p>
       <h2>What's your play?</h2>${cardsHTML("r2", false)}
-      ${group() ? `<p class="small">No peeking. Everyone's picks are revealed together.</p>` : ""}</section>`;
+</section>`;
     el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick("post", b.dataset.pick, "pass2", "r2fb", saveGame));
   }
   else if (screen === "r2fb") {
     const made = game.players.filter(p => p.post === ROUND2.correct).length;
     let head, cls;
     if (!group()) { cls = made ? "good" : "miss"; head = made ? "That's a team player." : "Close. Here's the best play."; }
-    else { cls = made === game.size ? "good" : "miss"; head = made === game.size ? "The whole team made the play." : `${made} of ${game.size} made the play. Here's the best play.`; }
+    else { cls = made ? "good" : "miss"; head = made ? "That's a team that shows up." : "Close. Here's the best play."; }
     el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Play 2 · The reveal</span>
       <div class="feedback ${cls}"><strong>${head}</strong>
@@ -463,21 +477,20 @@ function render(){
   else if (screen === "useful") {
     el.innerHTML = `<section class="stack fade">
       <span class="eyebrow">Post-game</span>
-      ${turnBanner("useful", "your answer")}
+      ${turnBanner()}
       <h2>Was this useful?</h2>
       <div class="opts">${USEFUL.map(u => `<button class="opt" data-u="${u.id}">${esc(u.text)}</button>`).join("")}</div></section>`;
     el.querySelectorAll("[data-u]").forEach(b => b.onclick = () => {
       const i = game.turn, v = b.dataset.u;
       updateRow(i, { useful: v });
-      if (group() && i < game.size - 1) { game.players[i].useful = v; game.turn++; toast(`${pname(i)} locked in`); render(); bumpIdle(); return; }
       game.players[i].useful = v; game.turn = 0; go("final");
     });
   }
   else if (screen === "final") {
-    const toggles = game.players.map((p, i) => `<div class="savedrow" style="--pc:${PCOLORS[i]}">
-        ${group() ? `<span class="who">${pname(i)}</span>` : ""}
-        <button class="tog ${p.saved === true ? "on" : ""}" data-s="${i}" data-v="1">Saved ✓</button>
-        <button class="tog ${p.saved === false ? "on" : ""}" data-s="${i}" data-v="0">Skipped</button></div>`).join("");
+    const sc = game.players[0].savedCount;
+    const toggles = group()
+      ? `<div class="savedrow">${Array.from({ length: game.size + 1 }, (_, k) => `<button class="tog ${sc === k ? "on" : ""}" data-n="${k}">${k}${k === game.size ? (game.size === 5 ? "+" : "") + " (all)" : ""}</button>`).join("")}</div>`
+      : `<div class="savedrow"><button class="tog" data-n="1">Saved ✓</button><button class="tog" data-n="0">Skipped</button></div>`;
     el.innerHTML = `<section class="stack fade">
       <div class="final">
         <div class="stack" style="gap:16px">
@@ -492,16 +505,14 @@ function render(){
           <div class="qr"><img src="${esc(qrSrc(q))}" alt="${q.label} QR code that saves the Counseling Center contacts" data-label="${q.label}" onerror="qrFallback(this)"></div>
           <figcaption>${q.label}</figcaption></figure>`).join("")}</div>
       </div>
-      <div class="staffbar"><span class="lbl">Staff: ${group() ? "who saved the contact?" : "contact saved?"}</span>
+      <div class="staffbar"><span class="lbl">Staff: ${group() ? "how many saved the contact? Tap to finish." : "contact saved?"}</span>
         ${toggles}
-        <div class="row"><button class="btn small" id="finish">Finish game</button></div></div></section>`;
-    el.querySelectorAll("[data-s]").forEach(b => b.onclick = () => {
-      const i = +b.dataset.s, v = b.dataset.v === "1";
-      game.players[i].saved = game.players[i].saved === v ? null : v;
-      if (!group()) { updateRow(0, { saved: game.players[0].saved }); go("thanks"); return; }
-      render();
+        <div class="row"><button class="btn small ghost" id="finish">Skip</button></div></div></section>`;
+    el.querySelectorAll("[data-n]").forEach(b => b.onclick = () => {
+      game.players[0].savedCount = +b.dataset.n;
+      updateRow(0, { savedCount: +b.dataset.n }); go("thanks");
     });
-    $("#finish").onclick = () => { game.players.forEach((p, i) => updateRow(i, { saved: p.saved })); go("thanks"); };
+    $("#finish").onclick = () => go("thanks");
   }
   else if (screen === "thanks") {
     el.innerHTML = `<section class="stack fade" style="align-items:flex-start">
@@ -524,15 +535,15 @@ function wireHold(btn){
   btn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { confirm = ""; go("staff"); } });
 }
 
-/* ---------- saving on this device: one row per player ---------- */
+/* ---------- saving on this device: one row per game (a team shares one answer) ---------- */
 function saveGame(){
   const at = new Date().toISOString();
-  const rows = game.players.map((p, i) => ({
-    id: newId(), gameId: game.id, groupSize: game.size, player: i + 1, event: cfg.event, at,
+  const rows = game.players.map(p => ({
+    id: newId(), gameId: game.id, groupSize: game.size, event: cfg.event, at,
     preChoice: p.pre, pre: p.pre === ROUND1.correct,
     gutCheck: p.gut, gutCorrect: p.gut === GUT.correct,
     postChoice: p.post, post: p.post === ROUND2.correct,
-    useful: null, saved: null }));
+    useful: null, savedCount: null }));
   game.rowIds = rows.map(r => r.id);
   plays = [...rows.slice().reverse(), ...plays];
   savePlays();
@@ -544,23 +555,118 @@ function updateRow(i, patch){
 }
 
 /* ---------- staff ---------- */
+/* Students = total of group sizes. Learning measures are per game, since a team shares one answer. */
 function summarize(rows){
   const answered = rows.filter(r => r.useful);
-  return { n: rows.length, games: new Set(rows.map(r => r.gameId)).size,
-    friends: rows.filter(r => r.groupSize > 1).length,
+  const sum = (list, f) => list.reduce((t, r) => t + (Number(f(r)) || 0), 0);
+  const solo = rows.filter(r => r.groupSize === 1);
+  const savedKnown = rows.filter(r => r.savedCount !== null && r.savedCount !== undefined);
+  return { n: sum(rows, r => r.groupSize), games: rows.length,
+    friends: sum(rows.filter(r => r.groupSize > 1), r => r.groupSize),
     pre: rows.filter(r => r.pre).length, post: rows.filter(r => r.post).length,
-    saved: rows.filter(r => r.saved === true).length, gained: rows.filter(r => !r.pre && r.post).length,
+    saved: sum(savedKnown, r => r.savedCount), savedOf: sum(savedKnown, r => r.groupSize),
+    gained: rows.filter(r => !r.pre && r.post).length,
     gutRight: rows.filter(r => r.gutCorrect).length,
+    soloN: solo.length, soloPre: solo.filter(r => r.pre).length, soloPost: solo.filter(r => r.post).length,
     usefulN: answered.length,
     useful: Object.fromEntries(USEFUL.map(u => [u.id, answered.filter(r => r.useful === u.id).length])) };
 }
-function toCSV(rows){
-  const head = "event,date_time,game_id,group_size,player,pre_choice,pre_correct,gut_check,gut_check_correct,post_choice,post_correct,usefulness,saved_contact";
-  const lines = rows.slice().reverse().map(p => [p.event, p.at, p.gameId, p.groupSize, p.player, p.preChoice, p.pre,
+const COLS = ["event","date_time","game_id","group_size","pre_choice","pre_correct","gut_check","gut_check_correct","post_choice","post_correct","usefulness","saved_count"];
+function rowValues(rows){
+  return rows.slice().reverse().map(p => [p.event, p.at, p.gameId, p.groupSize, p.preChoice, p.pre,
     gutLabel(p.gutCheck), p.gutCheck ? p.gutCorrect : "",
-    p.postChoice, p.post, p.useful ?? "", p.saved === null || p.saved === undefined ? "" : p.saved]
-    .map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
-  return [head, ...lines].join("\n");
+    p.postChoice, p.post, p.useful ?? "", p.savedCount ?? ""].map(v => String(v ?? "")));
+}
+function toCSV(rows){
+  return [COLS.join(","), ...rowValues(rows).map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(","))].join("\n");
+}
+/* Tab-separated copy: pastes into one Qualtrics text box, then straight into Excel columns. */
+function toTSV(rows){
+  return [COLS.join("\t"), ...rowValues(rows).map(r => r.map(v => v.replace(/[\t\n]/g, " ")).join("\t"))].join("\n");
+}
+/* ---------- send to Qualtrics ----------
+   Each send opens the results-drop survey inside the game with up to BATCH_ROWS rows in the link.
+   The survey submits itself (or staff tap its arrow), then redirects to sent.html, which tells the game. */
+const USEFUL_CODE = { learned_will_use: "learn_use", learned_wont_use: "learn_nouse", good_reminder: "reminder", nothing_new: "nothing" };
+const pad2 = n => String(n).padStart(2, "0");
+function encodeRow(p){
+  const d = new Date(p.at);
+  const when = `${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+  return [when, String(p.gameId).slice(-5), p.groupSize, p.preChoice || "", p.gutCheck || "",
+    p.postChoice || "", USEFUL_CODE[p.useful] || "", p.savedCount ?? ""].join(".");
+}
+function buildBatches(){
+  const unsent = plays.filter(p => !p.sent).slice().reverse();   // oldest first
+  const byEvent = {};
+  unsent.forEach(p => { (byEvent[p.event] = byEvent[p.event] || []).push(p); });
+  const batches = [];
+  Object.entries(byEvent).forEach(([ev, rows]) => {
+    for (let i = 0; i < rows.length; i += BATCH_ROWS) batches.push({ ev, rows: rows.slice(i, i + BATCH_ROWS) });
+  });
+  return batches;
+}
+let sending = null;
+function sendResults(){
+  const batches = buildBatches();
+  if (!batches.length) { toast("Everything is already sent"); return; }
+  sending = { batches, i: 0, id: newId(), timer: null };
+  $("#sendPanel").hidden = false; $("#sendFrame").hidden = false;
+  sendNext();
+}
+function sendNext(){
+  const s = sending, b = s.batches[s.i];
+  const total = s.batches.reduce((n, x) => n + x.rows.length, 0);
+  const done = s.batches.slice(0, s.i).reduce((n, x) => n + x.rows.length, 0);
+  $("#sendStatus").className = "status"; $("#sendStatus").textContent = s.batches.length > 1 ? `Sending part ${s.i + 1} of ${s.batches.length}…` : "Sending…";
+  $("#sendBar").style.width = `${Math.round(done / total * 100)}%`;
+  $("#sendHint").textContent = "Keep this screen open. It only takes a few seconds.";
+  $("#sendActions").innerHTML = `<button class="btn small ghost" id="sendCancel">Cancel</button>`;
+  $("#sendCancel").onclick = closeSend;
+  const yr = new Date(b.rows[0].at).getFullYear();
+  const q = new URLSearchParams({ ev: b.ev, yr, send: s.id, b: s.i + 1, n: s.batches.length, rows: b.rows.map(encodeRow).join("~") });
+  $("#sendFrame").src = DROP_URL + (DROP_URL.includes("?") ? "&" : "?") + q.toString();
+  clearTimeout(s.timer);
+  s.timer = setTimeout(() => {   // the survey didn't submit by itself: ask staff to tap its arrow
+    $("#sendHint").innerHTML = "Tap the <b>arrow</b> in the Qualtrics box below to finish sending. If the box is blank, use <b>Copy results</b> instead.";
+  }, 8000);
+}
+window.addEventListener("message", e => {
+  const m = e.data;
+  if (!sending || !m || m.type !== "tt-sent" || String(m.send) !== String(sending.id) || Number(m.b) !== sending.i + 1) return;
+  const s = sending;
+  clearTimeout(s.timer);
+  const ids = new Set(s.batches[s.i].rows.map(r => r.id));
+  plays.forEach(p => { if (ids.has(p.id)) p.sent = true; });
+  savePlays();
+  s.i++;
+  if (s.i < s.batches.length) { sendNext(); return; }
+  const total = s.batches.reduce((n, x) => n + x.rows.length, 0);
+  cfg.lastExport = new Date().toISOString(); saveCfg();
+  $("#sendFrame").src = "about:blank"; $("#sendFrame").hidden = true;
+  $("#sendBar").style.width = "100%";
+  $("#sendStatus").className = "status ok"; $("#sendStatus").textContent = `Sent ✓ ${total} game${total === 1 ? "" : "s"}`;
+  $("#sendHint").textContent = "Results are safe in Qualtrics. Erase them from this iPad to start fresh for the next event.";
+  $("#sendActions").innerHTML = `<button class="btn small" id="sendErase">Erase results from this iPad</button><button class="btn small ghost" id="sendDone">Done</button>`;
+  $("#sendErase").onclick = () => { plays = plays.filter(p => !p.sent); savePlays(); closeSend(); toast("Results erased. Ready for the next event."); };
+  $("#sendDone").onclick = closeSend;
+});
+function closeSend(){
+  if (sending) clearTimeout(sending.timer);
+  sending = null; $("#sendFrame").src = "about:blank"; $("#sendPanel").hidden = true;
+  if (screen === "staff") render();
+}
+async function copyResults(){
+  const text = toTSV(plays);
+  const box = $("#csvBox");
+  try {
+    await navigator.clipboard.writeText(text);
+    cfg.lastExport = new Date().toISOString(); saveCfg(); render();
+    toast(`Copied ${plays.length} row${plays.length === 1 ? "" : "s"}. Now paste into the Qualtrics staff page.`);
+  } catch (e) {
+    box.value = text; box.hidden = false; box.readOnly = false;
+    box.focus(); box.select();
+    toast("Tap the box below, then Select All and Copy.");
+  }
 }
 async function exportCSV(){
   const csv = toCSV(plays);
@@ -587,9 +693,9 @@ function renderStaff(el){
   const events = [...new Set(plays.map(p => p.event))];
   const u = s.useful;
   const statement = s.n
-    ? `At ${cfg.event} tabling, ${s.n} students played across ${s.games} game${s.games === 1 ? "" : "s"} (${pct(s.friends, s.n)}% played with friends). ${pct(s.pre, s.n)}% chose to check in directly before the huddle; ${pct(s.post, s.n)}% chose to lean in and refer after. ${pct(u.learned_will_use, s.usefulN)}% said they learned something new and plan to use it, and ${pct(s.saved, s.n)}% saved crisis and counseling contacts to their phone.`
+    ? `At ${cfg.event} tabling, we reached ${s.n} students across ${s.games} game${s.games === 1 ? "" : "s"} (${pct(s.friends, s.n)}% played with friends). Before the huddle, ${pct(s.pre, s.games)}% of games chose to check in directly; after it, ${pct(s.post, s.games)}% chose to lean in and refer. ${pct(u.learned_will_use, s.usefulN)}% of games said they learned something new and plan to use it, and ${pct(s.saved, s.savedOf)}% of students saved crisis and counseling contacts to their phone.`
     : "";
-  const unexported = plays.filter(p => !cfg.lastExport || p.at > cfg.lastExport).length;
+  const unexported = DROP_URL ? plays.filter(p => !p.sent).length : plays.filter(p => !cfg.lastExport || p.at > cfg.lastExport).length;
   const bar = (label, a, b, cls) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${pct(a, b)}%"></div></div><span class="v">${pct(a, b)}%</span></div>`;
   el.innerHTML = `<section class="panel fade">
     <div class="row" style="justify-content:space-between">
@@ -598,32 +704,37 @@ function renderStaff(el){
     </div>
     ${!storageOK ? `<div class="notice">This browser is blocking storage (often Private Browsing). Plays will be lost when the page closes. Turn off Private Browsing and reopen the game.</div>` : ""}
     ${plays.length ? `<div class="${unexported ? "notice" : "okline"}">${unexported
-      ? `${unexported} player${unexported === 1 ? "" : "s"} not exported yet. Export after every event so nothing is lost if the iPad's browser data is cleared.`
-      : `All plays exported${cfg.lastExport ? " · last export " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
+      ? `${unexported} game${unexported === 1 ? "" : "s"} not ${DROP_URL ? "sent" : "exported"} yet. ${DROP_URL ? "Send" : "Export"} after every event so nothing is lost if the iPad's browser data is cleared.`
+      : `All plays ${DROP_URL ? "sent" : "exported"}${cfg.lastExport ? " · last " + (DROP_URL ? "send" : "export") + " " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
     ${s.n ? `
     <div class="stats">
       <div class="stat"><div class="n">${s.n}</div><div class="l">Students reached · ${s.games} game${s.games === 1 ? "" : "s"}, ${pct(s.friends, s.n)}% with friends</div></div>
-      <div class="stat"><div class="n">${pct(s.pre, s.n)}%</div><div class="l">Knew the play before</div></div>
-      <div class="stat gold"><div class="n">${pct(s.post, s.n)}%</div><div class="l">Made the play after</div></div>
+      <div class="stat"><div class="n">${pct(s.pre, s.games)}%</div><div class="l">Knew the play before (per game)</div></div>
+      <div class="stat gold"><div class="n">${pct(s.post, s.games)}%</div><div class="l">Made the play after (per game)</div></div>
       <div class="stat"><div class="n">${pct(u.learned_will_use, s.usefulN)}%</div><div class="l">Learned something and will use it</div></div>
     </div>
     <div class="sec"><h3>Before and after</h3><div class="bars">
-      ${bar("Before huddle", s.pre, s.n, "")}
-      ${bar("After huddle", s.post, s.n, "post")}
-      ${bar("Saved the contact", s.saved, s.n, "saved")}
+      ${bar("Before huddle (games)", s.pre, s.games, "")}
+      ${bar("After huddle (games)", s.post, s.games, "post")}
+      ${bar("Saved the contact (students)", s.saved, s.savedOf, "saved")}
     </div>
-    <p class="muted" style="margin:10px 0 0">${s.gained} student${s.gained === 1 ? "" : "s"} missed play 1 and made play 2. ${pct(s.gutRight, s.n)}% got the gut check right (women).</p></div>
+    <p class="muted" style="margin:10px 0 0">${s.gained} game${s.gained === 1 ? "" : "s"} missed play 1 and made play 2. ${pct(s.gutRight, s.games)}% got the gut check right (women).${s.soloN ? ` Solo players only (${s.soloN}): ${pct(s.soloPre, s.soloN)}% before, ${pct(s.soloPost, s.soloN)}% after.` : ""}</p></div>
     <div class="sec"><h3>Was this useful?</h3><div class="bars">
       ${USEFUL.map(x => bar(esc(x.text), u[x.id], s.usefulN, x.id === "learned_will_use" ? "post" : "")).join("")}
     </div><p class="muted" style="margin:10px 0 0">Out of ${s.usefulN} who answered.</p></div>
     <div class="sec"><h3>Impact statement</h3><div class="statement">${esc(statement)}</div></div>`
-    : `<p class="scenario muted">No plays yet for this event. Each finished game adds one row per player: their picks before and after the huddle, their stat guess, how useful it was, and whether they saved the contact.</p>`}
+    : `<p class="scenario muted">No plays yet for this event. Each finished game adds one row: the group size, the team's picks before and after the huddle, the gut check, how useful it was, and how many saved the contact.</p>`}
     <div class="sec"><h3>Results</h3>
       <div class="row">
-        <button class="btn small" id="export" ${plays.length ? "" : "disabled"}>Export results (CSV)</button>
+        ${DROP_URL ? `<button class="btn small" id="sendRes" ${plays.some(p => !p.sent) ? "" : "disabled"}>Send results to Qualtrics</button>` : ""}
+        <button class="btn small ${DROP_URL ? "ghost" : ""}" id="copyRes" ${plays.length ? "" : "disabled"}>Copy results${DROP_URL ? " (backup)" : " for Qualtrics"}</button>
+        <button class="btn small ghost" id="export" ${plays.length ? "" : "disabled"}>Export CSV file</button>
         <button class="btn small ghost" id="undo" ${rows.length ? "" : "disabled"}>${confirm === "undo" ? "Tap again to delete last game" : "Undo last game"}</button>
         <button class="btn small warn" id="clear" ${plays.length ? "" : "disabled"}>${confirm === "clear" ? "Tap again to erase all results" : "Erase all results"}</button>
       </div>
+      <p class="muted" style="margin:10px 0 0">${DROP_URL
+        ? `After the event: tap <b>Send results to Qualtrics</b>, wait for <b>Sent ✓</b>, then tap <b>Erase</b>. Needs Wi-Fi.`
+        : `After the event: tap <b>Copy results for Qualtrics</b>, open the Qualtrics icon, type <b>0</b> in "How many are playing?", paste, and submit. Then come back and erase.`}</p>
       <textarea class="csv" id="csvBox" readonly hidden>${esc(toCSV(plays))}</textarea>
     </div>
     <div class="sec"><h3>Event setup</h3>
@@ -644,6 +755,8 @@ function renderStaff(el){
   </section>`;
   $("#back").onclick = () => { confirm = ""; go("start"); };
   $("#export").onclick = exportCSV;
+  $("#copyRes").onclick = copyResults;
+  if ($("#sendRes")) $("#sendRes").onclick = sendResults;
   $("#undo").onclick = () => {
     if (confirm !== "undo") { confirm = "undo"; render(); return; }
     confirm = ""; const last = rows[0];

@@ -1,7 +1,7 @@
 // Keeps the game working with no internet, while always loading the newest
 // game when the iPad is online.
 // Change VERSION whenever you update the files so iPads refresh their offline copy.
-const VERSION = "takes-a-team-v9";
+const VERSION = "takes-a-team-v12";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 // QR images, saved for offline if they exist (PNG or JPEG)
 const OPTIONAL = ["png", "jpg", "jpeg"].flatMap(x => [`./qr-iphone.${x}`, `./qr-android.${x}`]);
@@ -25,7 +25,10 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
 
   // The game page itself: try the internet first, fall back to the saved copy offline.
-  if (req.mode === "navigate" || new URL(req.url).pathname.endsWith("/index.html")) {
+  const path = new URL(req.url).pathname;
+  const isGame = path.endsWith("/") || path.endsWith("/index.html");
+  if (req.mode === "navigate" && !isGame) return;   // other pages (like sent.html) go straight to the network
+  if (isGame) {
     e.respondWith(
       fetch(req, { cache: "no-store" })
         .then(res => {
