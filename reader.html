@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Takes a Team Results Reader</title>
+<style>
+/* Staff tool: same chalk-on-turf look as the game, built for a laptop. */
+:root{
+  --turf:#103a2a; --turf-2:#17483a; --line:rgba(243,241,232,.16);
+  --chalk:#f3f1e8; --chalk-dim:#b8c8bd; --gold:#f6bd3a; --gold-ink:#2a1f05; --good:#8fdc9a; --miss:#f39a7c;
+  --display:"Avenir Next Condensed","Arial Narrow","Roboto Condensed","Helvetica Neue",sans-serif;
+  --body:"Avenir Next","Segoe UI","Helvetica Neue",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--turf);color:var(--chalk);font-family:var(--body);font-size:16px;line-height:1.45}
+main{max-width:1100px;margin:0 auto;padding-inline:20px;padding-block:24px 48px;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(2rem,5vw,3rem);line-height:1;margin:0}
+h2{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:1.3rem;margin:0 0 10px}
+.eyebrow{font-family:var(--display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.muted{color:var(--chalk-dim)}
+ol{margin:0;padding-left:22px}
+.drop{border:2px dashed var(--chalk-dim);border-radius:8px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.drop.over{border-color:var(--gold)}
+textarea{width:100%;min-height:120px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--chalk);background:var(--turf-2);border:1px solid var(--line);border-radius:6px;padding:10px}
+.btn{appearance:none;border:0;cursor:pointer;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:1rem;padding:11px 18px;border-radius:4px;background:var(--gold);color:var(--gold-ink)}
+.btn.ghost{background:transparent;color:var(--chalk);border:2px solid var(--chalk)}
+.btn:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{border-left:3px solid var(--chalk-dim);padding-left:12px}
+.stat .n{font-family:var(--display);font-weight:800;font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums}
+.stat.gold{border-color:var(--gold)} .stat.gold .n{color:var(--gold)}
+.statement{background:var(--turf-2);border:1px solid var(--line);border-radius:6px;padding:14px;max-width:75ch}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;max-height:420px}
+table{border-collapse:collapse;width:100%;font-size:.88rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--turf-2);font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--chalk-dim)}
+.notice{border:1.5px solid var(--miss);border-radius:6px;padding:10px 14px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--chalk);color:var(--turf);padding:10px 16px;border-radius:4px;font-weight:600}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <span class="eyebrow">Takes a Team · Staff tool</span>
+    <h1>Results reader</h1>
+  </div>
+  <section>
+    <h2>How to use it</h2>
+    <ol class="muted">
+      <li>In Qualtrics, open the <b>results drop</b> survey, then <b>Data &amp; Analysis &gt; Export &amp; Import &gt; Export data &gt; CSV</b>.</li>
+      <li>Drop that file below (or choose it). Nothing is uploaded; it's read right here in your browser.</li>
+      <li>Copy the clean table into Excel, or download it as a CSV.</li>
+    </ol>
+  </section>
+  <section class="drop" id="drop">
+    <label for="file"><b>Qualtrics export (CSV)</b></label>
+    <input type="file" id="file" accept=".csv,text/csv">
+    <span class="muted">Or paste the export's text here:</span>
+    <textarea id="paste" placeholder="Paste the CSV text, or just the rows cells, here"></textarea>
+    <div class="row"><button class="btn" id="read">Read results</button></div>
+  </section>
+  <section id="out" hidden></section>
+</main>
+<div id="toast" hidden></div>
+<script>
+(() => {
+"use strict";
+const COLS = ["event","date_time","game_id","group_size","pre_choice","pre_correct","gut_check","gut_check_correct","post_choice","post_correct","usefulness","saved_count"];
+const USEFUL = { learn_use: "learned_will_use", learn_nouse: "learned_wont_use", reminder: "good_reminder", nothing: "nothing_new" };
+const GUT = { men: "Men", women: "Women", same: "About the same" };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+function toast(m){ const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => t.hidden = true, 2600); }
+
+/* Minimal CSV parser that handles quoted fields, commas and line breaks inside quotes. */
+function parseCSV(text){
+  const out = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); out.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); out.push(row); }
+  return out;
+}
+
+function decodeRows(rowsStr, ev, yr){
+  return String(rowsStr).split("~").filter(Boolean).map(r => {
+    const f = r.split(".");
+    // New format (one row per game): when.gid.size.pre.gut.post.useful.savedCount
+    // Older format (one row per player): when.gid.size.player.pre.gut.post.useful.saved(yes/no)
+    let when, gid, size, pre, gut, post, useful, savedCount;
+    if (f.length >= 9) { [when, gid, size, , pre, gut, post, useful] = f; savedCount = f[8] === "yes" ? "1" : f[8] === "no" ? "0" : ""; size = "1"; }
+    else [when, gid, size, pre, gut, post, useful, savedCount] = f;
+    const m = /^(\d\d)(\d\d)-(\d\d)(\d\d)$/.exec(when || "");
+    const date = m ? `${yr || ""}-${m[1]}-${m[2]} ${m[3]}:${m[4]}` : when;
+    return { event: ev, date_time: date, game_id: gid, group_size: size,
+      pre_choice: pre, pre_correct: String(pre === "checkin"),
+      gut_check: GUT[gut] || "", gut_check_correct: gut ? String(gut === "women") : "",
+      post_choice: post, post_correct: String(post === "lean"),
+      usefulness: USEFUL[useful] || "", saved_count: savedCount ?? "" };
+  });
+}
+
+function read(text){
+  const records = [], seen = new Set();
+  const grid = parseCSV(text.trim());
+  const headIdx = grid.findIndex(r => r.includes("rows"));
+  if (headIdx >= 0) {
+    const h = grid[headIdx], col = n => h.indexOf(n);
+    for (const r of grid.slice(headIdx + 1)) {
+      const rows = r[col("rows")];
+      if (!rows || !/\d{4}-\d{4}\./.test(rows)) continue;   // skips Qualtrics' extra header lines
+      const key = `${r[col("send")]}|${r[col("b")]}`;
+      if (col("send") >= 0 && seen.has(key)) continue;      // a part sent twice counts once
+      seen.add(key);
+      records.push(...decodeRows(rows, r[col("ev")] || "", r[col("yr")] || ""));
+    }
+  } else {
+    // Pasted rows cells only
+    text.split(/\s+/).filter(s => /\d{4}-\d{4}\./.test(s)).forEach(s => records.push(...decodeRows(s, "", new Date().getFullYear())));
+  }
+  return records.sort((a, b) => String(a.date_time).localeCompare(String(b.date_time)));
+}
+
+function render(recs){
+  const out = $("#out");
+  if (!recs.length) { out.hidden = false; out.innerHTML = `<div class="notice">No game results found. Make sure it's the CSV export of the <b>results drop</b> survey.</div>`; return; }
+  const events = [...new Set(recs.map(r => r.event))];
+  const sum = (list, k) => list.reduce((t, r) => t + (Number(r[k]) || 0), 0);
+  const games = recs.length, n = sum(recs, "group_size");
+  const friends = sum(recs.filter(r => Number(r.group_size) > 1), "group_size");
+  const pre = recs.filter(r => r.pre_correct === "true").length, post = recs.filter(r => r.post_correct === "true").length;
+  const answered = recs.filter(r => r.usefulness).length, learnUse = recs.filter(r => r.usefulness === "learned_will_use").length;
+  const known = recs.filter(r => r.saved_count !== ""), saved = sum(known, "saved_count"), savedOf = sum(known, "group_size");
+  const solo = recs.filter(r => r.group_size === "1"), soloPre = solo.filter(r => r.pre_correct === "true").length, soloPost = solo.filter(r => r.post_correct === "true").length;
+  const evName = events.length === 1 ? events[0] : `${events.length} events`;
+  const statement = `At ${evName} tabling, we reached ${n} students across ${games} game${games === 1 ? "" : "s"} (${pct(friends, n)}% played with friends). Before the huddle, ${pct(pre, games)}% of games chose to check in directly; after it, ${pct(post, games)}% chose to lean in and refer. ${pct(learnUse, answered)}% of games said they learned something new and plan to use it, and ${pct(saved, savedOf)}% of students saved crisis and counseling contacts to their phone.`;
+  out.hidden = false;
+  out.innerHTML = `
+    <h2>${esc(evName)}</h2>
+    <div class="stats">
+      <div class="stat"><div class="n">${n}</div><div class="muted">Students reached · ${games} games</div></div>
+      <div class="stat"><div class="n">${pct(pre, games)}%</div><div class="muted">Knew the play before (per game)</div></div>
+      <div class="stat gold"><div class="n">${pct(post, games)}%</div><div class="muted">Made the play after (per game)</div></div>
+      <div class="stat"><div class="n">${pct(learnUse, answered)}%</div><div class="muted">Learned something, will use it</div></div>
+      <div class="stat"><div class="n">${pct(saved, savedOf)}%</div><div class="muted">Students who saved the contact</div></div>
+    </div>
+    ${solo.length ? `<p class="muted" style="margin:0">Solo players only (${solo.length}): ${pct(soloPre, solo.length)}% before, ${pct(soloPost, solo.length)}% after. These are the strictest individual numbers.</p>` : ""}
+    <div><h2>Impact statement</h2><div class="statement">${esc(statement)}</div></div>
+    <div class="row"><button class="btn" id="copyTable">Copy table for Excel</button><button class="btn ghost" id="dl">Download CSV</button></div>
+    <div class="tablewrap"><table><thead><tr>${COLS.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+      <tbody>${recs.map(r => `<tr>${COLS.map(c => `<td>${esc(r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const tsv = [COLS.join("\t"), ...recs.map(r => COLS.map(c => r[c]).join("\t"))].join("\n");
+  const csv = [COLS.join(","), ...recs.map(r => COLS.map(c => `"${String(r[c]).replace(/"/g, '""')}"`).join(","))].join("\n");
+  $("#copyTable").onclick = async () => { try { await navigator.clipboard.writeText(tsv); toast("Copied. Paste into Excel."); } catch (e) { toast("Copy blocked. Use Download CSV instead."); } };
+  $("#dl").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "takes-a-team-results.csv"; a.click(); };
+}
+
+$("#read").onclick = () => render(read($("#paste").value));
+$("#file").onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { $("#paste").value = t; render(read(t)); }); };
+const drop = $("#drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => { $("#paste").value = t; render(read(t)); }); });
+})();
+</script>
+</body>
+</html>

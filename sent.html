@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Results sent</title>
+<style>
+  :root{color-scheme:dark}
+  html,body{margin:0;height:100%}
+  body{background:#103a2a;color:#f3f1e8;font-family:"Avenir Next","Segoe UI","Helvetica Neue",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;box-sizing:border-box}
+  b{display:block;font-size:28px;color:#8fdc9a;letter-spacing:.04em;text-transform:uppercase}
+  p{margin:8px 0 0;color:#b8c8bd}
+</style>
+</head>
+<body>
+<div><b>Sent ✓</b><p id="msg">This part of the results reached Qualtrics.</p></div>
+<script>
+/* Qualtrics redirects here after each results-drop response.
+   Inside the game, this tells the game the part arrived. Opened on its own, it just shows a message. */
+(function(){
+  var q = new URLSearchParams(location.search);
+  var data = { type: "tt-sent", send: q.get("send"), b: q.get("b") };
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(data, "*");
+  } else {
+    document.getElementById("msg").textContent = "Results reached Qualtrics. You can close this page.";
+  }
+})();
+</script>
+</body>
+</html>
