@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MHM Arcade">
+<meta name="theme-color" content="#f6f2e7">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Your First Semester</title>
+<style>
+/* A coach's chalk playbook on turf. Uses only fonts built into iPad/Mac/Windows, so the page makes no outside requests. */
+:root{
+  --turf:#103a2a; --turf-2:#17483a; --turf-3:#1d5644; --line:rgba(243,241,232,.14);
+  --chalk:#f3f1e8; --chalk-dim:#b8c8bd; --gold:#f6bd3a; --gold-ink:#2a1f05;
+  --good:#8fdc9a; --miss:#f39a7c;
+  --p1:#f6bd3a; --p2:#8fd3e8; --p3:#d2b4f5;
+  --display:"Avenir Next Condensed","Arial Narrow","Roboto Condensed","Helvetica Neue",sans-serif;
+  --body:"Avenir Next","Segoe UI","Helvetica Neue",system-ui,sans-serif;
+  --hand:"Noteworthy","Marker Felt","Comic Sans MS","Bradley Hand",cursive;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--turf);color:var(--chalk);font-family:var(--body);font-size:17px;line-height:1.45;
+  background-image:repeating-linear-gradient(90deg,transparent 0 119px,var(--line) 119px 121px);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+input,textarea{-webkit-user-select:text;user-select:text}
+#app{min-height:100%;display:flex;flex-direction:column;max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:14px 24px;gap:18px}
+.board{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--chalk);padding-bottom:10px}
+.brand{font-family:var(--display);font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:1.05rem}
+.brand b{color:var(--gold)}
+.downs{display:flex;gap:8px;flex-wrap:wrap;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:.9rem;text-transform:uppercase}
+.downs span{padding:4px 10px;border:1.5px solid var(--chalk-dim);color:var(--chalk-dim);border-radius:3px}
+.downs span.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.downs span.done{color:var(--chalk);border-color:var(--chalk)}
+main{flex:1;display:flex;flex-direction:column;gap:22px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:.95;margin:0;text-wrap:balance}
+h1{font-size:clamp(3rem,9vw,6.2rem)}
+h2{font-size:clamp(2rem,5vw,3.1rem)}
+.eyebrow{font-family:var(--display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-size:1rem}
+.hand{font-family:var(--hand);color:var(--chalk-dim)}
+.scenario{font-size:clamp(1.25rem,2.6vw,1.6rem);max-width:46ch;margin:0;line-height:1.35}
+.scenario q{font-family:var(--hand);color:var(--chalk)}
+.small{font-size:.9rem;color:var(--chalk-dim);margin:0}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.cards{grid-template-columns:1fr}}
+.play{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;padding:18px;border:2px solid var(--chalk);border-radius:6px;background:var(--turf-2);min-height:220px;transition:transform .15s,background .15s;position:relative}
+.play:active{transform:scale(.98);background:var(--turf-3)}
+.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.play .tag{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:.1em;color:var(--gold)}
+.play svg{width:100%;height:76px;color:var(--chalk-dim)}
+.play strong{font-family:var(--display);font-weight:800;font-size:1.7rem;text-transform:uppercase;line-height:1}
+.play small{font-size:1rem;color:var(--chalk-dim);line-height:1.35}
+.play.right{border-color:var(--good);background:var(--turf-3)} .play.right .tag{color:var(--good)}
+.play.wrong{border-color:var(--miss);opacity:.75}
+.play[disabled]{cursor:default}
+.pickers{display:flex;gap:6px;flex-wrap:wrap}
+.pickers i{font-style:normal;font-family:var(--display);font-weight:800;font-size:.85rem;letter-spacing:.06em;padding:3px 8px;border-radius:3px;color:var(--turf);background:var(--pc)}
+.btn{appearance:none;-webkit-appearance:none;border:0;cursor:pointer;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:1.35rem;padding:16px 30px;border-radius:4px;background:var(--gold);color:var(--gold-ink);text-align:center}
+.btn:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--chalk);border:2px solid var(--chalk)}
+.btn.warn{background:transparent;color:var(--miss);border:2px solid var(--miss)}
+.btn.small{font-size:1rem;padding:10px 18px}
+.btn[disabled]{opacity:.4;cursor:default}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.start{flex:1;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:center}
+@media (max-width:760px){.start{grid-template-columns:1fr}}
+.start h1 em{font-style:normal;color:var(--gold)}
+.start svg{width:100%;max-height:340px;color:var(--chalk)}
+.count{display:flex;gap:12px;flex-wrap:wrap}
+.count .btn{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:150px}
+.sizes .btn{min-width:92px;font-size:2rem;padding:18px 0}
+.count .btn small{font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:600;font-size:.85rem;opacity:.85}
+/* turn banner for group play */
+.turn{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:2px solid var(--pc);border-radius:6px;padding:12px 16px;background:var(--turf-2)}
+.turn b{font-family:var(--display);font-size:1.5rem;text-transform:uppercase;color:var(--pc);letter-spacing:.04em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:.9rem;padding:5px 10px;border-radius:3px;border:1.5px solid var(--pc);color:var(--pc)}
+.chip.done{background:var(--pc);color:var(--turf)}
+.pass{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:20px}
+.pass .big{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.95;color:var(--pc)}
+/* stat */
+.guess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:900px}
+@media (max-width:760px){.guess{grid-template-columns:1fr}}
+.guess button{appearance:none;-webkit-appearance:none;display:grid;grid-template-columns:auto auto;justify-content:center;align-items:baseline;column-gap:14px;row-gap:4px;font-family:var(--display);color:var(--chalk);background:var(--turf-2);border:2px solid var(--chalk);border-radius:6px;padding:20px 12px;cursor:pointer}
+.guess button span{font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:1rem;color:var(--chalk-dim);text-align:right}
+.guess button b{font-weight:800;font-size:clamp(2.2rem,5vw,3rem);line-height:1;font-variant-numeric:tabular-nums;text-align:left}
+.guess button:active{background:var(--turf-3)}
+.guess button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.guess.gut button{font-weight:800;font-size:clamp(1.6rem,3.6vw,2.2rem);text-transform:uppercase;letter-spacing:.04em;display:block;text-align:center;padding:26px 12px}
+.guess.gut button.right{border-color:var(--good);background:var(--turf-3);color:var(--good)}
+.guess.gut button.wrong{border-color:var(--miss);opacity:.6}
+.guess.gut button[disabled]{cursor:default}
+.reveal{display:flex;flex-direction:column;gap:12px;max-width:900px}
+.cards2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:700px){.cards2{grid-template-columns:1fr}}
+.pop{animation:pop .45s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.callcard{border-radius:6px;padding:16px 14px;text-align:center;font-weight:800;font-size:clamp(1.05rem,1.9vw,1.3rem);line-height:1.3;text-wrap:balance}
+.callcard.men{background:var(--gold);color:var(--gold-ink)}
+.callcard.women{background:var(--chalk);color:var(--turf)}
+.fullteam{border:3px solid var(--gold);border-radius:6px;padding:16px;text-align:center;color:var(--gold);font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(1.6rem,3vw,2.1rem);line-height:1.1;letter-spacing:.02em}
+.statwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
+@media (max-width:760px){.statwrap{grid-template-columns:1fr}}
+.bignum{font-family:var(--display);font-weight:800;font-size:clamp(5rem,14vw,8.5rem);line-height:.85;color:var(--gold)}
+.sbars{display:flex;flex-direction:column;gap:18px}
+.sgroup h3{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:1.2rem;margin:0 0 8px}
+.sbar{display:grid;grid-template-columns:72px minmax(0,1fr) 52px;gap:10px;align-items:center;font-size:1rem}
+.sbar+.sbar{margin-top:6px}
+.strack{height:24px;background:var(--turf-2);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.sfill{height:100%;background:var(--chalk-dim)} .sfill.men{background:var(--gold)}
+.sbar .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.callout{font-size:clamp(1.2rem,2.4vw,1.5rem);font-weight:700;margin:0;max-width:40ch}
+.huddle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;counter-reset:h}
+@media (max-width:760px){.huddle{grid-template-columns:1fr}}
+.huddle div{border-top:3px solid var(--gold);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.huddle b{font-family:var(--display);font-weight:800;font-size:1.6rem;text-transform:uppercase;line-height:1}
+.huddle b::before{counter-increment:h;content:counter(h) ". ";color:var(--gold)}
+.feedback{font-size:1.25rem;max-width:56ch;display:flex;flex-direction:column;gap:8px}
+.feedback strong{font-family:var(--display);font-size:2rem;text-transform:uppercase;display:block;line-height:1}
+.feedback.good strong{color:var(--good)} .feedback.miss strong{color:var(--miss)}
+.results{display:flex;gap:8px;flex-wrap:wrap}
+/* usefulness */
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px}
+@media (max-width:760px){.opts{grid-template-columns:1fr}}
+.opt{appearance:none;-webkit-appearance:none;font:inherit;font-size:1.2rem;font-weight:600;color:var(--chalk);text-align:left;cursor:pointer;background:var(--turf-2);border:2px solid var(--chalk);border-radius:6px;padding:18px 20px;line-height:1.3}
+.opt:active{background:var(--turf-3)}
+.opt:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+/* final */
+.final{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center}
+@media (max-width:760px){.final{grid-template-columns:1fr}}
+.qrs{display:flex;gap:18px;flex-wrap:wrap}
+.qrs figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.qrs figcaption{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;color:var(--gold)}
+.qr{width:min(230px,40vw);aspect-ratio:1;max-width:100%;background:#fff;border-radius:6px;display:grid;place-items:center;padding:12px}
+.qr img{width:100%;height:100%;object-fit:contain}
+.qr.empty{background:transparent;border:2.5px dashed var(--chalk-dim);color:var(--chalk-dim);text-align:center;font-family:var(--hand);font-size:1.3rem}
+.roster{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.roster li{display:flex;align-items:center;gap:12px;font-size:1.2rem;font-weight:600}
+.roster li::before{content:"";width:14px;height:14px;border:2.5px solid var(--gold);border-radius:50%;flex:none}
+.crisis{font-size:1.05rem;color:var(--chalk-dim);margin:0} .crisis b{color:var(--chalk)}
+.staffbar{border-top:1.5px dashed var(--chalk-dim);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.staffbar .lbl{font-family:var(--display);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim);font-size:.95rem}
+.savedrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.savedrow .who{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pc);min-width:96px}
+.tog{appearance:none;-webkit-appearance:none;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:.95rem;padding:9px 14px;border-radius:4px;border:2px solid var(--chalk-dim);background:transparent;color:var(--chalk-dim);cursor:pointer}
+.tog.on{background:var(--chalk);color:var(--turf);border-color:var(--chalk)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--chalk-dim);font-size:.85rem}
+.hold{appearance:none;-webkit-appearance:none;background:transparent;color:var(--chalk-dim);cursor:pointer;font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:10px 14px;border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden;-webkit-touch-callout:none}
+.hold i{position:absolute;inset:0;background:var(--gold);opacity:.35;transform:scaleX(0);transform-origin:left}
+.hold.pressing i{transition:transform 1s linear;transform:scaleX(1)}
+/* staff */
+.panel{display:flex;flex-direction:column;gap:26px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{border-left:3px solid var(--chalk-dim);padding-left:12px}
+.stat .n{font-family:var(--display);font-weight:800;font-size:2.8rem;line-height:1;font-variant-numeric:tabular-nums}
+.stat .l{font-size:.9rem;color:var(--chalk-dim)}
+.stat.gold{border-color:var(--gold)} .stat.gold .n{color:var(--gold)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:230px minmax(0,1fr) 64px;gap:12px;align-items:center;font-size:.95rem}
+@media (max-width:620px){.bar{grid-template-columns:120px minmax(0,1fr) 52px}}
+.track{height:22px;background:var(--turf-2);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.fill{height:100%;background:var(--chalk-dim)} .fill.post{background:var(--gold)} .fill.saved{background:var(--good)}
+.bar .v{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.statement{background:var(--turf-2);border:1px solid var(--line);border-radius:4px;padding:16px;font-size:1.1rem;max-width:70ch;-webkit-user-select:text;user-select:text}
+.sec h3{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:1.3rem;margin:0 0 10px}
+.field{display:flex;flex-direction:column;gap:6px;max-width:520px}
+.field label{font-size:.9rem;color:var(--chalk-dim)}
+.field input[type=text]{font:inherit;font-size:16px;color:var(--chalk);background:var(--turf-2);border:1.5px solid var(--chalk-dim);border-radius:4px;padding:10px 12px}
+.field input:focus-visible{outline:2px solid var(--gold);border-color:var(--gold)}
+textarea.csv{width:100%;min-height:160px;font:13px/1.4 ui-monospace,Menlo,monospace;color:var(--chalk);background:var(--turf-2);border:1px solid var(--line);border-radius:4px;padding:10px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;color:var(--chalk-dim);font-weight:700}
+.notice{border:1.5px solid var(--miss);padding:10px 14px;border-radius:4px;font-size:.95rem}
+.okline{border-left:3px solid var(--good);padding-left:12px;font-size:.95rem;color:var(--chalk-dim)}
+.muted{color:var(--chalk-dim)}
+#sendFrame{position:fixed;left:-2000px;top:0;width:400px;height:300px;border:0;opacity:0;pointer-events:none}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--chalk);color:var(--turf);padding:10px 18px;border-radius:4px;font-weight:600;z-index:5;max-width:calc(100% - 40px)}
+[hidden]{display:none!important}
+.fade{animation:fade .35s ease both}
+@keyframes fade{from{opacity:.35;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fade,.pop{animation:none}.hold.pressing i{transition:none}.play{transition:none}}
+/* ---------- Welcome game additions ---------- */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.colhead{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:clamp(1.1rem,2.2vw,1.5rem);text-align:center;border-bottom:3px solid var(--gold);padding-bottom:8px}
+.tile{appearance:none;-webkit-appearance:none;cursor:pointer;font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,6vw,4rem);color:var(--gold-ink);background:var(--gold);border:0;border-radius:6px;min-height:clamp(110px,18vh,170px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .15s}
+.tile small{font-family:var(--body);font-weight:700;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;opacity:.75}
+.tile:active{transform:scale(.97)}
+.tile:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
+.tile.used{background:transparent;border:2px dashed var(--chalk-dim);color:var(--chalk-dim);cursor:default}
+.momentcard{border-left:6px solid var(--gold);background:var(--turf-2);border-radius:4px;padding:18px 20px;max-width:900px}
+.momentcard .when{font-family:var(--display);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-size:1rem;margin-bottom:6px}
+.choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.choices{grid-template-columns:1fr}}
+.choice{appearance:none;-webkit-appearance:none;font:inherit;font-size:1.2rem;font-weight:600;color:var(--chalk);text-align:left;cursor:pointer;background:var(--turf-2);border:2px solid var(--chalk);border-radius:6px;padding:18px 18px;line-height:1.3;min-height:120px;display:flex;flex-direction:column;gap:8px}
+.choice:active{background:var(--turf-3)}
+.choice:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.choice.right{border-color:var(--good);background:var(--turf-3)}
+.choice.wrong{border-color:var(--miss);opacity:.7}
+.choice.dim{opacity:.45}
+.choice[disabled]{cursor:default}
+.choice .mark{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:.95rem}
+.choice.right .mark{color:var(--good)} .choice.wrong .mark{color:var(--miss)}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px}
+@media (max-width:760px){.checks{grid-template-columns:1fr}}
+.check{appearance:none;-webkit-appearance:none;font:inherit;font-size:1.25rem;font-weight:600;color:var(--chalk);text-align:left;cursor:pointer;background:var(--turf-2);border:2px solid var(--chalk-dim);border-radius:6px;padding:18px 18px;display:flex;gap:14px;align-items:center;line-height:1.25}
+.check i{flex:none;width:30px;height:30px;border:2.5px solid var(--chalk);border-radius:4px;display:grid;place-items:center;font-style:normal;font-weight:800;color:var(--turf)}
+.check.on{border-color:var(--gold)} .check.on i{background:var(--gold);border-color:var(--gold)}
+.check.on i::after{content:"✓"}
+.check.revealed{border-color:var(--good);cursor:default} .check.revealed i{background:var(--good);border-color:var(--good)}
+.check.revealed i::after{content:"✓"}
+.check.revealed.missed{border-style:dashed}
+.check em{font-style:normal;font-size:.85rem;color:var(--good);font-weight:700;margin-left:auto;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.allfour{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(2rem,5vw,3.2rem);line-height:.95;color:var(--good)}
+.services{border-top:2px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:12px;max-width:980px}
+.services h3{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:clamp(1.4rem,3vw,1.9rem);margin:0;color:var(--gold)}
+.svc{display:flex;flex-wrap:wrap;gap:8px}
+.svc span{background:var(--chalk);color:var(--turf);font-weight:700;font-size:1rem;padding:7px 12px;border-radius:999px}
+.svc.partners span{background:transparent;color:var(--chalk);border:1.5px solid var(--chalk-dim);font-weight:600;font-size:.95rem}
+.fine{font-size:1rem;color:var(--chalk-dim);margin:0;max-width:70ch}
+.feedline{font-size:1.25rem;max-width:60ch;display:flex;flex-direction:column;gap:6px}
+.feedline strong{font-family:var(--display);font-size:2rem;text-transform:uppercase;line-height:1}
+.feedline.good strong{color:var(--good)} .feedline.miss strong{color:var(--gold)}
+.groupnote{font-family:var(--display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--chalk-dim);font-size:.95rem}
+/* ---------- Welcome theme: a semester planner. Cream paper, deep green ink, gold accents. ---------- */
+:root{
+  --turf:#f6f2e7; --turf-2:#ffffff; --turf-3:#e9f1ea; --line:rgba(21,71,52,.14);
+  --chalk:#154734; --chalk-dim:#5a6e62; --gold:#e8b52a; --gold-ink:#1b2a20; --gold-text:#8a6500;
+  --good:#2c7a4b; --miss:#b4532f; --green:#154734;
+  --display:"Iowan Old Style","Palatino Linotype","Palatino","Book Antiqua",Georgia,serif;
+  color-scheme:light;
+}
+body{background:var(--turf);background-image:none}
+h1,h2{text-transform:none;letter-spacing:-.01em;line-height:1.02;font-weight:700}
+h1{font-size:clamp(3rem,8vw,5.4rem)} h2{font-size:clamp(1.9rem,4.4vw,2.8rem)}
+.board{border-bottom:2px solid var(--green)}
+.brand{font-family:var(--body);font-weight:700;letter-spacing:.08em;font-size:.95rem}
+.brand b,.eyebrow,.momentcard .when,.services h3,.qrs figcaption,.stat.gold .n{color:var(--gold-text)}
+.eyebrow,.momentcard .when{font-family:var(--body);letter-spacing:.16em;font-size:.85rem}
+.downs{font-family:var(--body);font-size:.8rem}
+.downs span{border-radius:999px;border-width:1px}
+.btn{font-family:var(--body);font-weight:700;letter-spacing:.04em;text-transform:none;border-radius:999px;background:var(--green);color:#fff}
+.btn.ghost{color:var(--green);border-color:var(--green)}
+.sizes .btn{background:var(--gold);color:var(--gold-ink);font-family:var(--display)}
+.colhead{font-family:var(--display);text-transform:none;letter-spacing:0;color:var(--green);border-bottom:2px solid var(--gold)}
+.tile{background:var(--green);color:#fff;font-family:var(--display);font-weight:700;border-radius:10px;box-shadow:0 2px 0 rgba(21,71,52,.25)}
+.tile small{color:var(--gold);opacity:1;font-family:var(--body)}
+.tile.used{background:transparent;border:2px dashed rgba(21,71,52,.35);color:rgba(21,71,52,.45);box-shadow:none}
+.tile.used small{color:rgba(21,71,52,.45)}
+.momentcard{background:#fff;border-left-color:var(--gold);box-shadow:0 1px 0 var(--line)}
+.choice,.check,.opt{border-width:1.5px;border-color:rgba(21,71,52,.35);border-radius:10px}
+.choice.right{border-color:var(--good);border-width:2px} .choice.wrong{border-color:var(--miss)}
+.check i{border-color:var(--green);color:var(--green)}
+.check.on{border-color:var(--gold);background:#fffaf0}
+.check.revealed i{color:#fff}
+.allfour,.feedline strong,.callcard{font-family:var(--display);text-transform:none}
+.feedline.miss strong{color:var(--gold-text)}
+.svc span{background:var(--green);color:#fff}
+.svc.partners span{color:var(--green);border-color:rgba(21,71,52,.35);background:#fff}
+.qr{box-shadow:0 0 0 1px var(--line)}
+.tog{font-family:var(--body);text-transform:none;letter-spacing:.02em;border-radius:999px}
+.tog.on{background:var(--green);color:#fff}
+.hold{font-family:var(--body)}
+.stat .n{font-family:var(--display)}
+.sec h3{font-family:var(--display);text-transform:none;letter-spacing:0}
+#toast{background:var(--green);color:#fff}
+.fill{background:rgba(21,71,52,.35)} .fill.post{background:var(--gold)} .fill.saved{background:var(--good)}
+.groupnote,.staffbar .lbl,.choice .mark,.qrs figcaption,.lbl{font-family:var(--body)}
+.services h3{text-transform:none;letter-spacing:0}
+/* ---------- binder / planner details ---------- */
+body{background-color:var(--turf);
+  background-image:repeating-linear-gradient(180deg,transparent 0 35px,rgba(21,71,52,.07) 35px 36px);}
+body::before{content:"";position:fixed;top:0;bottom:0;left:0;width:46px;z-index:0;pointer-events:none;
+  background:radial-gradient(circle at 23px 50%,#d9d2bf 0 9px,rgba(21,71,52,.25) 9px 10px,transparent 10.5px) 0 0/46px 120px repeat-y;
+  border-right:2px solid rgba(232,181,42,.55)}
+#app{position:relative;z-index:1;padding-left:max(20px,calc(46px + 20px))}
+@media (min-width:1260px){#app{padding-left:20px}}
+.board{border-bottom:3px solid var(--green);padding-bottom:0;align-items:flex-end}
+.brand{padding-bottom:10px}
+.downs{gap:4px;align-self:flex-end}
+.downs span{border-radius:8px 8px 0 0;border:1.5px solid rgba(21,71,52,.35);border-bottom:0;background:#fbf8f0;padding:6px 12px;margin-bottom:-0px}
+.downs span.on{background:var(--green);color:#fff;border-color:var(--green)}
+.downs span.done{background:#efe8d4;color:var(--green)}
+.colhead{background:#efe8d4;border:1.5px solid rgba(21,71,52,.25);border-bottom:0;border-radius:10px 10px 0 0;padding:8px 6px 6px;margin-top:8px;font-size:clamp(1.05rem,2vw,1.35rem)}
+.tiles{row-gap:22px}
+.tile{position:relative;border-radius:2px 10px 10px 10px;margin-top:12px;overflow:visible}
+.tile::before{content:"";position:absolute;left:0;top:-12px;width:42%;height:13px;background:inherit;border-radius:8px 8px 0 0}
+.tile.used::before{background:transparent;border:2px dashed rgba(21,71,52,.35);border-bottom:0;top:-14px;left:-2px}
+.momentcard{border-left:0;border-top:10px solid var(--green);border-radius:4px;
+  background:#fff repeating-linear-gradient(180deg,transparent 0 33px,rgba(21,71,52,.08) 33px 34px);
+  box-shadow:0 2px 0 rgba(21,71,52,.12),0 0 0 1px rgba(21,71,52,.12);padding-left:30px;position:relative}
+.momentcard::after{content:"";position:absolute;top:0;bottom:0;left:18px;width:2px;background:rgba(232,181,42,.7)}
+.choice,.opt,.check{box-shadow:0 2px 0 rgba(21,71,52,.10)}
+.services{border-top:2px dashed rgba(21,71,52,.25)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="board">
+    <div class="brand">Mental Health Matters <b>Your First Semester</b></div>
+    <div class="downs" id="downs" aria-label="Progress"></div>
+  </header>
+  <main id="screen" aria-live="polite"></main>
+</div>
+<iframe id="sendFrame" title="Sending results" aria-hidden="true" tabindex="-1"></iframe>
+<div id="toast" hidden></div>
+<script>
+(() => {
+"use strict";
+/* Results are saved on this iPad, then each finished game sends itself to the Welcome game's Qualtrics survey. */
+const KEY_PLAYS = "welcomeGame.plays.v1", KEY_CFG = "welcomeGame.config.v1";
+const DEFAULTS = { event: "New Student Welcome", lastExport: "" };
+const QRS = [ { label: "iPhone", file: "qr-iphone.png" }, { label: "Android", file: "qr-android.png" } ];
+/* Accept the QR files as .png, .jpg or .jpeg; show a placeholder if none exist. */
+window.qrFallback = img => {
+  const src = img.getAttribute("src"), order = [".png", ".jpg", ".jpeg"];
+  const m = /^(qr-(?:iphone|android))(\.png|\.jpg|\.jpeg)$/.exec(src);
+  const next = m && order[order.indexOf(m[2]) + 1];
+  if (next) { img.src = m[1] + next; return; }
+  img.parentNode.classList.add("empty");
+  img.replaceWith(`${img.dataset.label} code on the table`);
+};
+const IDLE_MS = 120000;   // an abandoned game returns to the start after 2 minutes (never on the QR screen)
+/* Results drop: the anonymous link to the Welcome game's own Qualtrics survey.
+   Paste the link between the quotes. Left empty, results stay on the iPad (Copy / Export still work). */
+const DROP_URL = "";
+const SEND_TIMEOUT_MS = 25000;
+
+/* ---------- content (from the "Welcome Game: Tile Drafts" doc) ----------
+   Every scenario has the same three kinds of answer, so results compare across tiles:
+   alone = handle it alone or wait · partial = a partial step · connect = connect with BUCC (the right play). */
+const KIND = { alone: "Handle it alone", partial: "Partial step", connect: "Connect with BUCC" };
+const COLUMNS = [
+  { id: "w1",  name: "Week 1",
+    gut: { q: "Which of these can help when you're settling in?",
+           items: ["A BUCC initial appointment", "Group counseling with other students", "Campus Living & Learning", "Getting involved in a student org, like Active Minds"] } },
+  { id: "w3",  name: "Week 3",
+    gut: { q: "Which of these can help when the newness wears off?",
+           items: ["One-on-one counseling", "Support any time by phone (Uwill, 24/7)", "Advice for parents and family", "Spiritual Life and your resident chaplain"] } },
+  { id: "ex",  name: "First exams",
+    gut: { q: "Which of these can help when classes feel heavy?",
+           items: ["BUCC counseling", "Study Skills Center", "MESA (Major Exploration & Success Advising)", "OALA (Access & Learning Accommodation)"] } },
+  { id: "mid", name: "Mid-semester",
+    gut: { q: "Which of these can help when you're questioning things?",
+           items: ["A BUCC initial appointment", "Career Center", "One Stop (Student Financial Services)", "Health Services"] } }
+];
+const TILES = [
+  { col: "w1", level: 100,
+    a: { text: "It's your first week. Everyone in your hall seems to already have their people, and you've eaten alone every night.",
+         alone: "Wait it out; it'll get better on its own", partial: "Text your friends from home every night",
+         connect: "Make an initial appointment with BUCC; they may suggest a group, too" },
+    b: { text: "Starting something new is harder than you expected. You're a little overwhelmed and not sure where to start.",
+         alone: "Figure it out on your own", partial: "Wait for things to settle down",
+         connect: "Make an initial appointment with BUCC" } },
+  { col: "w1", level: 200,
+    a: { text: "Classes are fine. You go to class, go back to your room, repeat. You're just quiet. It's not a big deal.",
+         alone: "It's just how you are", partial: "Join a club eventually",
+         connect: "Make an initial appointment with BUCC; a group may be a good fit, too" },
+    b: { text: "Your roommate moved in last semester and has a whole routine. You feel like a guest in your own room.",
+         alone: "Spend as little time there as possible", partial: "Vent to friends and let it ride",
+         connect: "Talk to your Community Leader, and to BUCC if it keeps weighing on you" } },
+  { col: "w3", level: 100,
+    a: { text: "The new-school buzz is gone. You're homesick, sleeping badly, and counting the days until break.",
+         alone: "Push through until break", partial: "Go home every weekend",
+         connect: "Reach out to BUCC; you don't need a crisis to come in" },
+    b: { text: "It's Sunday night. The week ahead feels like a lot, and you'd like to talk to someone tonight, not Monday.",
+         alone: "Scroll your phone until it passes", partial: "Wait until the office opens next week",
+         connect: "Call the 24/7 Uwill line tonight, then book with BUCC" } },
+  { col: "w3", level: 200,
+    a: { text: "Your mom texts every hour asking how you're doing. You say “fine” every time. It's easier than explaining.",
+         alone: "Keep saying “fine”", partial: "Stop answering for a while",
+         connect: "Talk it through at BUCC; families can call BUCC for advice too" },
+    b: { text: "You're up past 3 every night. Grades are okay, you're just tired. Everyone's tired, right?",
+         alone: "More coffee", partial: "Catch up on sleep on weekends",
+         connect: "Bring it up at BUCC; sleep and stress feed each other" } },
+  { col: "ex", level: 100,
+    a: { text: "You got a 58 on your first exam. You've never failed anything before.",
+         alone: "Study harder, on your own", partial: "Decide you're not cut out for this major",
+         connect: "Meet with the Study Skills Center, and talk to BUCC about the pressure" },
+    b: { text: "Your chest gets tight walking into exams and your mind goes blank, even when you studied.",
+         alone: "Hope it passes", partial: "Skip the next exam",
+         connect: "Make an initial appointment with BUCC; test anxiety is something BUCC helps with" } },
+  { col: "ex", level: 200,
+    a: { text: "You keep putting off your paper and can't figure out why. You're not lazy. It just feels heavy.",
+         alone: "Pull an all-nighter", partial: "Ignore it; it's just procrastination",
+         connect: "Make an initial appointment with BUCC" },
+    b: { text: "Everyone in your study group seems to get it. You nod along and say you're fine.",
+         alone: "Fake it until you catch up", partial: "Drop the class",
+         connect: "Talk to BUCC and a Study Skills coach; you're not the only one" } },
+  { col: "mid", level: 100,
+    a: { text: "You're seriously wondering if Baylor was the right choice. You've started looking at other schools.",
+         alone: "Keep it to yourself", partial: "Make the decision this week",
+         connect: "Talk it through with BUCC and MESA before deciding" },
+    b: { text: "Money's tight and financial aid stress is all you can think about.",
+         alone: "Pick up more shifts and hope", partial: "Ignore it until it's due",
+         connect: "Visit One Stop for the money, and BUCC for the stress" } },
+  { col: "mid", level: 200,
+    a: { text: "Nothing's wrong, exactly. You're just tired all the time, and things you used to enjoy feel flat.",
+         alone: "It's a phase", partial: "Wait for summer",
+         connect: "That's a reason to visit BUCC; you don't need a crisis" },
+    b: { text: "You're thinking about changing your major but don't want to disappoint your family.",
+         alone: "Stay in it to keep the peace", partial: "Switch without telling anyone",
+         connect: "The Career Center and MESA for the options, BUCC for the family conversation" } }
+].map(t => ({ ...t, id: `${t.col}-${t.level}`, colName: COLUMNS.find(c => c.id === t.col).name }));
+const tileLabel = t => `${t.colName} · ${t.level}`;
+const SERVICES = ["An initial appointment to figure out what you need", "One-on-one counseling", "Group counseling",
+  "Support any time, day or night, by phone", "Online counseling, even off campus", "Help connecting to medication or psychiatry",
+  "Finding specialized care off campus", "Advice for parents and friends", "Connecting you to academic support"];
+const PARTNERS = ["Career Center", "Major Exploration & Success Advising (MESA)", "Office of Access & Learning Accommodation (OALA)",
+  "One Stop Student Financial Services", "Study Skills Assistance", "Active Minds", "Beauchamp Addiction Recovery Center",
+  "Campus Recreation", "Health Services", "Spiritual Life & University Chaplain", "The Store", "Wellbeing Initiatives",
+  "Baylor Police", "Campus Living & Learning", "Care Team", "Equity, Civil Rights & Title IX",
+  "International Student & Scholar Services", "Multicultural Affairs"];
+const USEFUL = [
+  { id: "learned_will_use",  text: "I learned something new, and I'll use it." },
+  { id: "learned_wont_use",  text: "I learned something new, but I probably won't use it." },
+  { id: "good_reminder",     text: "I didn't learn anything new, but it was a good reminder." },
+  { id: "nothing_new",       text: "I didn't learn anything new, and I won't use it." }
+];
+
+/* ---------- helpers ---------- */
+function readKey(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+function writeKey(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+const storageOK = (() => { try { localStorage.setItem("welcomeGame.test", "1"); localStorage.removeItem("welcomeGame.test"); return true; } catch (e) { return false; } })();
+let cfg = { ...DEFAULTS, ...readKey(KEY_CFG, {}) };
+let plays = readKey(KEY_PLAYS, []);
+let game = null, screen = "start", homeTimer = null, idleTimer = null, confirm = "", lastGroup = null;
+function savePlays(){ if (!writeKey(KEY_PLAYS, plays)) toast("This play couldn't be saved on the iPad. Export results now."); }
+function saveCfg(){ writeKey(KEY_CFG, cfg); }
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 2600); }
+function fmtDate(iso){ try { return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) { return iso; } }
+const isGroup = () => game && game.size > 1;
+const sizeLabel = n => n >= 5 ? "5+" : String(n);
+
+/* ---------- navigation ---------- */
+function downs(){
+  const steps = ["Pick a moment", "Play 1", "Gut check", "Play 2", "Wrap-up"];
+  const order = { board:0, a:1, gut:2, reveal:2, b:3, useful:4, final:4, thanks:5 };
+  const at = order[screen];
+  $("#downs").innerHTML = at === undefined ? "" : steps.map((s, i) =>
+    `<span class="${at === i ? "on" : at > i ? "done" : ""}">${s}</span>`).join("");
+}
+function go(s){ screen = s; clearTimeout(homeTimer); render(); downs(); window.scrollTo(0, 0); bumpIdle(); }
+function bumpIdle(){
+  clearTimeout(idleTimer);
+  if (["start", "staff", "thanks", "final"].includes(screen)) return;   // the QR screen waits for staff
+  idleTimer = setTimeout(() => { game = null; lastGroup = null; go("start"); }, IDLE_MS);
+}
+document.addEventListener("pointerdown", bumpIdle, { passive: true });
+
+function startGroup(size){ lastGroup = { key: newId(), size, played: [] }; game = null; go("board"); }
+function newGame(tile){
+  game = { id: newId(), tile, size: lastGroup.size, groupKey: lastGroup.key, repeat: lastGroup.played.length > 0,
+           startedAt: Date.now(), a: null, gutChecked: [], b: null, rowId: null,
+           order: { a: shuffle(["alone", "partial", "connect"]), b: shuffle(["alone", "partial", "connect"]) } };
+  go("a");
+}
+const groupLine = () => isGroup() ? `<div class="groupnote">Team of ${sizeLabel(game.size)} · talk it over, then pick together</div>` : "";
+
+/* ---------- screens ---------- */
+function render(){
+  const el = $("#screen");
+  if (screen === "start") {
+    el.innerHTML = `<section class="stack fade" style="flex:1;justify-content:center">
+      <span class="eyebrow">New Student Welcome · Baylor Counseling Center</span>
+      <h1>Your first<br><em style="font-style:italic;color:var(--gold-text)">semester.</em></h1>
+      <p class="scenario">Pick a moment from the first semester. See who's on your team.</p>
+      <div class="stack" style="gap:12px"><span class="eyebrow" style="color:var(--chalk-dim)">How many are playing?</span>
+      <div class="count sizes">${[1,2,3,4,5].map(n => `<button class="btn" data-size="${n}">${n === 5 ? "5+" : n}</button>`).join("")}</div></div>
+    </section>
+    <div class="foot"><span>Baylor University Counseling Center outreach</span>
+      <button class="hold" id="staffBtn" aria-label="Staff results, press and hold to open"><i></i>Staff · hold</button></div>`;
+    el.querySelectorAll("[data-size]").forEach(b => b.onclick = () => startGroup(+b.dataset.size));
+    wireHold($("#staffBtn"));
+  }
+  else if (screen === "board") {
+    const used = lastGroup ? lastGroup.played : [];
+    el.innerHTML = `<section class="stack fade">
+      <div><span class="eyebrow">${lastGroup && lastGroup.played.length ? "Pick another moment" : "Pick a moment"}</span>
+      <h2>Your first semester</h2></div>
+      <div class="tiles">${COLUMNS.map(c => `<div class="colhead">${esc(c.name)}</div>`).join("")}
+      ${[100, 200].map(lv => COLUMNS.map(c => { const t = TILES.find(x => x.col === c.id && x.level === lv);
+        const u = used.includes(t.id);
+        return `<button class="tile ${u ? "used" : ""}" data-tile="${t.id}" ${u ? "disabled" : ""} aria-label="${esc(tileLabel(t))}">${lv}<small>${u ? "played" : esc(c.name)}</small></button>`; }).join("")).join("")}
+      </div>
+      <p class="small">100 = a moment where help is an obvious fit · 200 = a moment that's easy to brush off</p>
+    </section>`;
+    el.querySelectorAll("[data-tile]:not([disabled])").forEach(b => b.onclick = () => newGame(TILES.find(t => t.id === b.dataset.tile)));
+  }
+  else if (screen === "a" || screen === "b") {
+    const part = screen, sc = game.tile[part], pick = game[part];
+    const opts = game.order[part].map(k => {
+      let cls = "", mark = "";
+      if (pick) {
+        if (k === "connect") { cls = "right"; mark = pick === k ? "✓ That's the play" : "✓ The play"; }
+        else if (k === pick) { cls = "wrong"; mark = "Your pick"; }
+        else cls = "dim";
+      }
+      return `<button class="choice ${cls}" data-k="${k}" ${pick ? "disabled" : ""}>${mark ? `<span class="mark">${mark}</span>` : ""}${esc(sc[k])}</button>`;
+    }).join("");
+    const fb = !pick ? "" : pick === "connect"
+      ? `<div class="feedline good"><strong>That's the play.</strong><span>${part === "a" ? "Reaching out early is a study strategy, not a last resort." : "You don't need a crisis to come in. That's what BUCC is here for."}</span></div>`
+      : `<div class="feedline miss"><strong>Here's the play.</strong><span>${part === "a" ? "A lot of students wait. Getting support early keeps a hard week from becoming a hard semester." : "Connecting early is the move. BUCC is a starting point for whatever you're facing."}</span></div>`;
+    el.innerHTML = `<section class="stack fade">
+      <div class="momentcard"><div class="when">${esc(tileLabel(game.tile))} · ${part === "a" ? "Play 1" : "Play 2"}</div>
+        <p class="scenario" style="max-width:none">${esc(sc.text)}</p></div>
+      ${groupLine()}
+      <span class="eyebrow">What's the play?</span>
+      <div class="choices">${opts}</div>
+      ${fb}
+      ${pick ? `<div class="row"><button class="btn" id="next">${part === "a" ? "Gut check" : "Next"}</button></div>` : ""}
+    </section>`;
+    if (!pick) el.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+      game[part] = b.dataset.k;
+      if (part === "b") { game.secs = Math.round((Date.now() - game.startedAt) / 1000); saveGame(); }
+      render();
+    });
+    else $("#next").onclick = () => go(part === "a" ? "gut" : "useful");
+  }
+  else if (screen === "gut" || screen === "reveal") {
+    const col = COLUMNS.find(c => c.id === game.tile.col), rev = screen === "reveal";
+    const n = game.gutChecked.length;
+    el.innerHTML = `<section class="stack fade" style="gap:18px">
+      <div><span class="eyebrow">Gut check · ${esc(col.name)}</span><h2>${esc(col.gut.q)}</h2></div>
+      ${rev ? `<div class="allfour pop">All four can help.</div><p class="fine" style="margin-top:-8px">You picked ${n} of 4. BUCC can connect you to every one of them.</p>`
+            : `<p class="small">Tap every one you think can help${isGroup() ? ", together" : ""}.</p>`}
+      <div class="checks">${col.gut.items.map((it, i) => {
+        const on = game.gutChecked.includes(i);
+        return `<button class="check ${rev ? "revealed" + (on ? "" : " missed") : on ? "on" : ""}" data-i="${i}" ${rev ? "disabled" : ""}><i></i><span>${esc(it)}</span>${rev && !on ? "<em>Also helps</em>" : ""}</button>`; }).join("")}</div>
+      ${rev ? `<div class="services pop">
+          <h3>Everything BUCC can help with</h3>
+          <div class="svc">${SERVICES.map(s => `<span>${esc(s)}</span>`).join("")}</div>
+          <div class="row"><button class="btn small ghost" id="partners">${game.showPartners ? "Hide" : "+ 18"} campus partners</button></div>
+          ${game.showPartners ? `<div class="svc partners">${PARTNERS.map(p => `<span>${esc(p)}</span>`).join("")}</div>` : ""}
+          <p class="fine">Everything BUCC provides directly is free, including 24/7 support through Uwill. For care we connect you to, we help you navigate insurance.</p>
+        </div>
+        <div class="row"><button class="btn" id="next">Play 2</button></div>`
+      : `<div class="row"><button class="btn" id="check">Check my answers</button></div>`}
+    </section>`;
+    if (!rev) {
+      el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
+        const i = +b.dataset.i, s = game.gutChecked;
+        game.gutChecked = s.includes(i) ? s.filter(x => x !== i) : [...s, i];
+        b.classList.toggle("on");
+      });
+      $("#check").onclick = () => go("reveal");
+    } else {
+      $("#partners").onclick = () => { game.showPartners = !game.showPartners; render(); };
+      $("#next").onclick = () => go("b");
+    }
+  }
+  else if (screen === "useful") {
+    el.innerHTML = `<section class="stack fade">
+      <span class="eyebrow">Last question</span><h2>Was this useful?</h2>
+      ${groupLine()}
+      <div class="opts">${USEFUL.map(u => `<button class="opt" data-u="${u.id}">${esc(u.text)}</button>`).join("")}</div>
+    </section>`;
+    el.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { updateRow({ useful: b.dataset.u }); go("final"); });
+  }
+  else if (screen === "final") {
+    const toggles = isGroup()
+      ? Array.from({ length: game.size + 1 }, (_, k) => `<button class="tog" data-n="${k}">${k}${k === game.size ? (game.size === 5 ? "+" : "") + " (all)" : ""}</button>`).join("")
+      : `<button class="tog" data-n="1">Saved or already had it ✓</button><button class="tog" data-n="0">Didn't save</button>`;
+    el.innerHTML = `<section class="stack fade">
+      <div class="final">
+        <div class="stack" style="gap:16px">
+          <span class="eyebrow">Your first step</span>
+          <h2>Put BUCC in your phone</h2>
+          <p class="scenario">Scan the code for your phone to save the Counseling Center's contacts, including 24/7 support.</p>
+          <p class="crisis">Any time, day or night: <b>Uwill (833) 969-3998</b> · Office hours: <b>(254) 710-2467</b></p>
+        </div>
+        <div class="qrs">${QRS.map(q => `<figure>
+          <div class="qr"><img src="${q.file}" alt="${q.label} QR code that saves the Counseling Center contacts" data-label="${q.label}" onerror="qrFallback(this)"></div>
+          <figcaption>${q.label}</figcaption></figure>`).join("")}</div>
+      </div>
+      <div class="staffbar"><span class="lbl">Staff: ${isGroup() ? "how many saved it or already had it? Tap to finish." : "saved it or already had it?"}</span>
+        <div class="savedrow">${toggles}</div>
+        <div class="row"><button class="btn small ghost" id="finish">Skip</button></div></div>
+    </section>`;
+    el.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { updateRow({ savedCount: +b.dataset.n }); go("thanks"); });
+    $("#finish").onclick = () => go("thanks");
+  }
+  else if (screen === "thanks") {
+    if (lastGroup && game && !lastGroup.played.includes(game.tile.id)) lastGroup.played.push(game.tile.id);
+    const more = lastGroup && lastGroup.played.length < TILES.length;
+    el.innerHTML = `<section class="stack fade" style="align-items:flex-start">
+      <span class="eyebrow">Welcome to Baylor</span><h1>Thanks for<br>playing.</h1>
+      <p class="scenario hand">Grab your prize${isGroup() ? "s" : ""}. BUCC is here from week 1.</p>
+      <div class="row">${more ? `<button class="btn" id="again">Same group, another moment</button>` : ""}
+        <button class="btn ${more ? "ghost" : ""}" id="next">Next group</button></div></section>`;
+    if (more) $("#again").onclick = () => { game = null; go("board"); };
+    $("#next").onclick = () => { game = null; lastGroup = null; go("start"); };
+    homeTimer = setTimeout(() => { game = null; lastGroup = null; go("start"); }, 15000);
+    setTimeout(pumpSend, 500);   // send this game to Qualtrics in the background
+  }
+  else if (screen === "staff") renderStaff(el);
+}
+
+function wireHold(btn){
+  let t = null;
+  const start = e => { e.preventDefault(); btn.classList.add("pressing"); t = setTimeout(() => { btn.classList.remove("pressing"); confirm = ""; go("staff"); }, 1000); };
+  const stop = () => { btn.classList.remove("pressing"); clearTimeout(t); };
+  btn.addEventListener("pointerdown", start);
+  ["pointerup","pointerleave","pointercancel"].forEach(ev => btn.addEventListener(ev, stop));
+  btn.addEventListener("contextmenu", e => e.preventDefault());
+  btn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { confirm = ""; go("staff"); } });
+}
+
+/* ---------- saving: one row per tile played ---------- */
+function saveGame(){
+  const col = COLUMNS.find(c => c.id === game.tile.col);
+  const row = { id: newId(), gameId: game.id, groupKey: game.groupKey, repeat: game.repeat, groupSize: game.size,
+    event: cfg.event, at: new Date().toISOString(), tile: game.tile.id,
+    a: game.a, gut: game.gutChecked.slice().sort(), gutOf: col.gut.items.length, b: game.b, secs: game.secs,
+    useful: null, savedCount: null };
+  game.rowId = row.id;
+  plays = [row, ...plays];
+  savePlays();
+}
+function updateRow(patch){
+  const r = game && plays.find(x => x.id === game.rowId); if (!r) return;
+  Object.assign(r, patch); savePlays();
+}
+
+/* ---------- results ---------- */
+const tileOf = id => TILES.find(t => t.id === id) || { colName: "?", level: "?", col: "" };
+function summarize(rows){
+  const firsts = rows.filter(r => !r.repeat);
+  const n = firsts.reduce((s, r) => s + r.groupSize, 0);
+  const games = rows.length;
+  const pre = rows.filter(r => r.a === "connect").length, post = rows.filter(r => r.b === "connect").length;
+  const gutPts = rows.reduce((s, r) => s + (r.gut || []).length, 0), gutMax = rows.reduce((s, r) => s + (r.gutOf || 4), 0);
+  const answered = rows.filter(r => r.useful);
+  const willUse = answered.filter(r => r.useful === "learned_will_use").length;
+  const helpful = answered.filter(r => r.useful === "learned_will_use" || r.useful === "good_reminder").length;
+  const savedRows = firsts.filter(r => r.savedCount !== null && r.savedCount !== undefined);
+  // a group's contact count is taken from the last tile it finished with a count
+  const savedByGroup = {};
+  rows.forEach(r => { if (r.savedCount !== null && r.savedCount !== undefined && !(r.groupKey in savedByGroup)) savedByGroup[r.groupKey] = r.savedCount; });
+  const saved = Object.values(savedByGroup).reduce((s, v) => s + v, 0);
+  const groupsMore = new Set(rows.filter(r => r.repeat).map(r => r.groupKey)).size;
+  return { n, games, groups: firsts.length, groupsMore, pre, post, gutPts, gutMax, usefulN: answered.length, willUse, helpful, saved,
+           savedGroups: Object.keys(savedByGroup).length, savedRows: savedRows.length };
+}
+const COLS = ["event","date_time","game_id","group_size","repeat","tile","play1_choice","play1_correct","gut_score","gut_missed","play2_choice","play2_correct","usefulness","saved_contact","seconds"];
+function gutMissed(r){ const col = COLUMNS.find(c => c.id === tileOf(r.tile).col); return col ? col.gut.items.filter((_, i) => !(r.gut || []).includes(i)).join("; ") : ""; }
+function rowValues(rows){
+  return rows.slice().reverse().map(r => [r.event, r.at, r.gameId, sizeLabel(r.groupSize), r.repeat ? "Yes" : "No", tileLabel(tileOf(r.tile)),
+    KIND[r.a] || "", r.a === "connect", `${(r.gut || []).length} of ${r.gutOf || 4}`, gutMissed(r),
+    KIND[r.b] || "", r.b === "connect", (USEFUL.find(u => u.id === r.useful) || {}).text || "", r.savedCount ?? "", r.secs ?? ""].map(v => String(v ?? "")));
+}
+const csvCell = v => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+const toCSV = rows => [COLS.join(","), ...rowValues(rows).map(r => r.map(csvCell).join(","))].join("\n");
+const toTSV = rows => [COLS.join("\t"), ...rowValues(rows).map(r => r.map(v => v.replace(/[\t\n]/g, " ")).join("\t"))].join("\n");
+
+/* ---------- send to Qualtrics ----------
+   Each finished tile is sent on its own, in the background, as one Qualtrics response with plain-language fields.
+   A hidden frame opens the results-drop survey with the game in the link; the survey submits itself and redirects
+   to sent.html (on this same site), which tells the game it landed. Offline games wait and go out once back online. */
+function qualtricsFields(r){
+  const t = tileOf(r.tile);
+  return {
+    Event: r.event,
+    Played: fmtDate(r.at),
+    Game: String(r.gameId).slice(-6),
+    Group_size: sizeLabel(r.groupSize),
+    Repeat: r.repeat ? "Yes" : "No",
+    Tile: tileLabel(t),
+    Play1_choice: KIND[r.a] || "",
+    Play1_result: r.a ? (r.a === "connect" ? "Correct" : "Missed") : "",
+    Gut_score: `${(r.gut || []).length} of ${r.gutOf || 4}`,
+    Gut_missed: gutMissed(r),
+    Play2_choice: KIND[r.b] || "",
+    Play2_result: r.b ? (r.b === "connect" ? "Correct" : "Missed") : "",
+    Useful: (USEFUL.find(u => u.id === r.useful) || {}).text || "",
+    Saved_contact: r.savedCount === null || r.savedCount === undefined ? "" : String(r.savedCount),
+    Seconds: r.secs ?? ""
+  };
+}
+let pumping = null, pumpWait = null;
+const inProgress = r => game && game.rowId === r.id && screen !== "thanks" && screen !== "start" && screen !== "board";
+const unsentRows = () => plays.filter(r => !r.sent && !inProgress(r)).slice().reverse();   // oldest first
+function pumpSend(){
+  if (!DROP_URL || pumping || !navigator.onLine) return;
+  const next = unsentRows()[0];
+  if (!next) return;
+  const f = $("#sendFrame");
+  pumping = { id: next.id, timer: null };
+  const done = ok => {
+    if (!pumping) return;
+    clearTimeout(pumping.timer); f.onload = null; f.src = "about:blank";
+    if (ok) { const r = plays.find(x => x.id === pumping.id); if (r) { r.sent = true; savePlays(); } cfg.lastExport = new Date().toISOString(); saveCfg(); }
+    pumping = null;
+    if (screen === "staff") render();
+    if (ok) setTimeout(pumpSend, 300);
+    else { clearTimeout(pumpWait); pumpWait = setTimeout(pumpSend, 60000); }   // try again in a minute
+  };
+  f.onload = () => {
+    let path = "";
+    try { path = f.contentWindow.location.pathname; } catch (e) { return; }   // still on Qualtrics
+    if (/sent\.html$/.test(path)) done(true);
+  };
+  pumping.timer = setTimeout(() => done(false), SEND_TIMEOUT_MS);
+  const q = new URLSearchParams(qualtricsFields(next));
+  f.src = DROP_URL + (DROP_URL.includes("?") ? "&" : "?") + q.toString();
+}
+window.addEventListener("online", () => setTimeout(pumpSend, 1000));
+setInterval(pumpSend, 60000);
+
+async function copyResults(){
+  const text = toTSV(plays);
+  try { await navigator.clipboard.writeText(text); toast("Results copied"); }
+  catch (e) { const box = $("#csvBox"); box.hidden = false; box.value = text; box.focus(); box.select(); toast("Select all and copy"); }
+}
+function exportCSV(){
+  const blob = new Blob([toCSV(plays)], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `welcome-game-results-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ---------- staff ---------- */
+function renderStaff(el){
+  const rows = plays.filter(p => p.event === cfg.event);
+  const s = summarize(rows);
+  const unsent = DROP_URL ? plays.filter(p => !p.sent).length : 0;
+  const statement = s.games
+    ? `At ${cfg.event}, we reached ${s.n} students and family members across ${s.games} game${s.games === 1 ? "" : "s"}${s.groupsMore ? ` (${s.groupsMore} group${s.groupsMore === 1 ? "" : "s"} chose to play again)` : ""}. Before the gut check, ${pct(s.pre, s.games)}% of games chose to connect with BUCC; after it, ${pct(s.post, s.games)}% did. Players recognized ${pct(s.gutPts, s.gutMax)}% of the services and partners that can help, and ${pct(s.helpful, s.usefulN)}% said they learned something new or got a good reminder.`
+    : "";
+  const bar = (label, a, b, cls) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${pct(a, b)}%"></div></div><span class="v">${pct(a, b)}%</span></div>`;
+  el.innerHTML = `<section class="panel fade">
+    <div class="row" style="justify-content:space-between">
+      <div><span class="eyebrow">Staff results · saved on this iPad</span><h2>${esc(cfg.event)}</h2></div>
+      <div class="row"><a class="btn small ghost" href="./" style="text-decoration:none">Arcade</a><button class="btn small" id="back">Back to game</button></div>
+    </div>
+    ${!storageOK ? `<div class="notice">This browser is blocking storage (often Private Browsing). Plays will be lost when the page closes.</div>` : ""}
+    ${!DROP_URL ? `<div class="notice">Sending to Qualtrics isn't set up yet, so results stay on this iPad. Use Export CSV file after each event.</div>`
+      : plays.length ? `<div class="${unsent ? "notice" : "okline"}">${unsent
+        ? `${unsent} game${unsent === 1 ? "" : "s"} waiting to send to Qualtrics. ${navigator.onLine ? (pumping ? "Sending now…" : "They'll go out on their own in a moment, or tap Send now.") : "This iPad is offline. They'll send automatically once it's back on Wi-Fi."}`
+        : `All ${plays.length} game${plays.length === 1 ? "" : "s"} sent to Qualtrics ✓${cfg.lastExport ? " · last send " + esc(fmtDate(cfg.lastExport)) : ""}.`}</div>` : ""}
+    ${s.games ? `
+    <div class="stats">
+      <div class="stat"><div class="n">${s.n}</div><div class="l">People reached · ${s.games} game${s.games === 1 ? "" : "s"}, ${s.groupsMore} played again</div></div>
+      <div class="stat"><div class="n">${pct(s.pre, s.games)}%</div><div class="l">Made the play before (Play 1)</div></div>
+      <div class="stat gold"><div class="n">${pct(s.post, s.games)}%</div><div class="l">Made the play after (Play 2)</div></div>
+      <div class="stat"><div class="n">${pct(s.gutPts, s.gutMax)}%</div><div class="l">Services & partners recognized</div></div>
+    </div>
+    <div class="sec"><h3>Before and after</h3><div class="bars">
+      ${bar("Play 1 (before)", s.pre, s.games, "")}
+      ${bar("Play 2 (after)", s.post, s.games, "post")}
+      ${bar("Learned something or good reminder", s.helpful, s.usefulN, "saved")}
+      ${bar("Saved the contact or already had it (people)", s.saved, s.n, "saved")}
+    </div></div>
+    <div class="sec"><h3>By moment</h3><div class="tablewrap"><table>
+      <thead><tr><th>Moment</th><th>Games</th><th>Play 1</th><th>Play 2</th><th>Gut check</th></tr></thead><tbody>
+      ${TILES.map(t => { const tr = rows.filter(r => r.tile === t.id); if (!tr.length) return "";
+        const ts = summarize(tr);
+        return `<tr><td>${esc(tileLabel(t))}</td><td>${tr.length}</td><td>${pct(ts.pre, ts.games)}%</td><td>${pct(ts.post, ts.games)}%</td><td>${pct(ts.gutPts, ts.gutMax)}%</td></tr>`; }).join("")}
+      </tbody></table></div></div>
+    <div class="sec"><h3>Impact statement</h3><div class="statement">${esc(statement)}</div></div>`
+    : `<p class="scenario muted">No plays yet for this event. Each tile played adds one row: the moment, group size, both plays, the gut check, how useful it was, and how many saved the contact.</p>`}
+    <div class="sec"><h3>Results</h3>
+      <div class="row">
+        ${DROP_URL && unsent ? `<button class="btn small" id="sendRes">Send now</button>` : ""}
+        <button class="btn small ghost" id="copyRes" ${plays.length ? "" : "disabled"}>Copy results (backup)</button>
+        <button class="btn small ghost" id="export" ${plays.length ? "" : "disabled"}>Export CSV file</button>
+        <button class="btn small ghost" id="undo" ${rows.length ? "" : "disabled"}>${confirm === "undo" ? "Tap again to delete last game" : "Undo last game"}</button>
+        <button class="btn small warn" id="clear" ${plays.length ? "" : "disabled"}>${confirm === "clear" ? (unsent ? `${unsent} not sent yet · tap again to erase anyway` : "Tap again to erase all results") : "Erase all results"}</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0">Each tile sends itself to Qualtrics when it ends (one response per tile). After the event, once this page says <b>all games sent ✓</b>, tap <b>Erase all results</b>.</p>
+      <textarea class="csv" id="csvBox" readonly hidden></textarea>
+    </div>
+    <div class="sec"><h3>Event setup</h3>
+      <div class="stack" style="gap:14px">
+        <div class="field"><label for="evName">Event name (results are grouped by this)</label><input type="text" id="evName" value="${esc(cfg.event)}"></div>
+        <div class="row"><button class="btn small" id="saveCfg">Save setup</button></div>
+      </div></div>
+  </section>`;
+  $("#back").onclick = () => { confirm = ""; go("start"); };
+  $("#export").onclick = exportCSV;
+  $("#copyRes").onclick = copyResults;
+  if ($("#sendRes")) $("#sendRes").onclick = () => { clearTimeout(pumpWait); pumpSend(); toast(navigator.onLine ? "Sending…" : "This iPad is offline"); setTimeout(render, 400); };
+  $("#undo").onclick = () => {
+    if (confirm !== "undo") { confirm = "undo"; render(); return; }
+    confirm = ""; const last = rows[0];
+    if (last) { plays = plays.filter(p => p.id !== last.id); savePlays(); toast("Last game deleted"); }
+    render();
+  };
+  $("#clear").onclick = () => {
+    if (confirm !== "clear") { confirm = "clear"; render(); return; }
+    confirm = ""; plays = []; savePlays(); toast("All results erased"); render();
+  };
+  $("#saveCfg").onclick = () => { const v = $("#evName").value.trim(); if (v) cfg.event = v; saveCfg(); toast("Setup saved"); render(); };
+}
+
+go("start");
+setTimeout(pumpSend, 2000);   // send anything left over from last time
+if ("serviceWorker" in navigator && window.isSecureContext && location.protocol !== "file:") {
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+}
+})();
+</script>
+</body>
+</html>

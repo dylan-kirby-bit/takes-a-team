@@ -1,8 +1,9 @@
-// Keeps the game working with no internet, while always loading the newest
-// game when the iPad is online.
+// Keeps the arcade and its games working with no internet, while always loading the newest
+// version when the iPad is online.
 // Change VERSION whenever you update the files so iPads refresh their offline copy.
-const VERSION = "takes-a-team-v13";
-const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
+const VERSION = "mhm-arcade-v14";
+const PAGES = ["./index.html", "./team.html", "./welcome.html"];
+const FILES = ["./", ...PAGES, "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 // QR images, saved for offline if they exist (PNG or JPEG)
 const OPTIONAL = ["png", "jpg", "jpeg"].flatMap(x => [`./qr-iphone.${x}`, `./qr-android.${x}`]);
 
@@ -24,19 +25,22 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
 
-  // The game page itself: try the internet first, fall back to the saved copy offline.
   const path = new URL(req.url).pathname;
-  const isGame = path.endsWith("/") || path.endsWith("/index.html");
-  if (req.mode === "navigate" && !isGame) return;   // other pages (like sent.html) go straight to the network
-  if (isGame) {
+  // Which saved page answers this request: the arcade home or one of the games
+  const page = path.endsWith("/") || path.endsWith("/index.html") ? "./index.html"
+    : path.endsWith("/team.html") ? "./team.html"
+    : path.endsWith("/welcome.html") ? "./welcome.html" : null;
+  if (req.mode === "navigate" && !page) return;   // other pages (sent.html, reader.html) go straight to the network
+
+  // Arcade and game pages: try the internet first, fall back to the saved copy offline.
+  if (page) {
     e.respondWith(
       fetch(req, { cache: "no-store" })
         .then(res => {
-          const copy = res.clone();
-          caches.open(VERSION).then(c => c.put("./index.html", copy));
+          if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(page, copy)); }
           return res;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(page))
     );
     return;
   }
